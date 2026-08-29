@@ -1,0 +1,97 @@
+{% INCLUDE 'overall_header.html' %}
+
+<a id="maincontent"></a>
+
+<h1>{{ lang('ACP_DOCUMENTATION_SETTINGS') }}</h1>
+
+<p>{{ lang('ACP_DOCUMENTATION_SETTINGS_EXPLAIN') }}</p>
+
+{% if S_ERROR %}
+<div class="errorbox">
+	<h3>{{ lang('WARNING') }}</h3>
+	<p>{{ ERROR_MSG }}</p>
+</div>
+{% endif %}
+
+{% if not S_DOCUMENTATION_BUILD_FOUND %}
+<div class="errorbox">
+	<p>{{ lang('ACP_DOCUMENTATION_BUILD_MISSING') }}</p>
+</div>
+{% endif %}
+
+{% if RESYNC_FEEDBACK %}
+<div class="successbox">
+	<p>{{ RESYNC_FEEDBACK }}</p>
+</div>
+{% endif %}
+
+<form id="acp_documentation" method="post" action="{{ U_ACTION }}">
+
+	<fieldset>
+		<legend>{{ lang('ACP_DOCUMENTATION_SETTINGS') }}</legend>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_docs_path">{{ lang('ACP_DOCUMENTATION_DOCS_PATH') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_DOCS_PATH_EXPLAIN') }}</span></dt>
+			<dd><input type="text" id="phpbbmodders_documentation_docs_path" name="phpbbmodders_documentation_docs_path" value="{{ DOCUMENTATION_DOCS_PATH }}" class="medium"></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_fallback_lang">{{ lang('ACP_DOCUMENTATION_FALLBACK_LANG') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_FALLBACK_LANG_EXPLAIN') }}</span></dt>
+			<dd><input type="text" id="phpbbmodders_documentation_fallback_lang" name="phpbbmodders_documentation_fallback_lang" value="{{ DOCUMENTATION_FALLBACK_LANG }}" class="tiny"></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_nav_link">{{ lang('ACP_DOCUMENTATION_NAV_LINK') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_NAV_LINK_EXPLAIN') }}</span></dt>
+			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_nav_link" name="phpbbmodders_documentation_nav_link" value="1"{% if S_DOCUMENTATION_NAV_LINK %} checked="checked"{% endif %}> {{ lang('ENABLED') }}</label>
+				<label><input type="radio" class="radio" name="phpbbmodders_documentation_nav_link" value="0"{% if not S_DOCUMENTATION_NAV_LINK %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_manual_switch">{{ lang('ACP_DOCUMENTATION_MANUAL_SWITCH') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_MANUAL_SWITCH_EXPLAIN') }}</span></dt>
+			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_manual_switch" name="phpbbmodders_documentation_manual_switch" value="1"{% if S_DOCUMENTATION_MANUAL_SWITCH %} checked="checked"{% endif %}> {{ lang('ENABLED') }}</label>
+				<label><input type="radio" class="radio" name="phpbbmodders_documentation_manual_switch" value="0"{% if not S_DOCUMENTATION_MANUAL_SWITCH %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_notify_recipients">{{ lang('ACP_DOCUMENTATION_NOTIFY_RECIPIENTS') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_NOTIFY_RECIPIENTS_EXPLAIN') }}</span></dt>
+			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_notify_recipients" name="phpbbmodders_documentation_notify_recipients" value="founders"{% if not S_DOCUMENTATION_NOTIFY_FOUNDERS_ADMINS %} checked="checked"{% endif %}> {{ lang('ACP_DOCUMENTATION_NOTIFY_FOUNDERS') }}</label>
+				<label><input type="radio" class="radio" name="phpbbmodders_documentation_notify_recipients" value="founders_admins"{% if S_DOCUMENTATION_NOTIFY_FOUNDERS_ADMINS %} checked="checked"{% endif %}> {{ lang('ACP_DOCUMENTATION_NOTIFY_FOUNDERS_ADMINS') }}</label></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_lang_map">{{ lang('ACP_DOCUMENTATION_LANG_MAP') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_LANG_MAP_EXPLAIN') }}</span></dt>
+			<dd><textarea id="phpbbmodders_documentation_lang_map" name="phpbbmodders_documentation_lang_map" rows="4" cols="40">{{ DOCUMENTATION_LANG_MAP }}</textarea></dd>
+		</dl>
+	</fieldset>
+
+	<fieldset class="submit-buttons">
+		<input class="button1" type="submit" id="submit" name="submit" value="{{ lang('SUBMIT') }}">&nbsp;
+		<input class="button2" type="reset" id="reset" name="reset" value="{{ lang('RESET') }}">
+		{{ S_FORM_TOKEN }}
+	</fieldset>
+</form>
+
+{% if S_DOCUMENTATION_BUILD_FOUND %}
+<h1>{{ lang('ACP_DOCUMENTATION_DETECTED') }}</h1>
+
+<table cellspacing="1">
+	<thead>
+		<tr>
+			<th>{{ lang('ACP_DOCUMENTATION_LANG_CODE') }}</th>
+			<th>{{ lang('ACP_DOCUMENTATION_LANG_SECTIONS') }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for documentation_lang in documentation_lang %}
+		<tr>
+			<td>{{ documentation_lang.CODE }}</td>
+			<td>{{ documentation_lang.SECTIONS }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+
+<form id="acp_documentation_resync" method="post" action="{{ U_ACTION }}">
+	<fieldset class="submit-buttons">
+		<p>{{ lang('ACP_DOCUMENTATION_RESYNC_EXPLAIN') }}</p>
+		<input class="button1" type="submit" id="resync" name="resync" value="{{ lang('ACP_DOCUMENTATION_RESYNC') }}">
+		{{ S_FORM_TOKEN }}
+	</fieldset>
+</form>
+{% endif %}
+
+{% INCLUDE 'overall_footer.html' %}

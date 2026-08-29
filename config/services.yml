@@ -1,0 +1,61 @@
+services:
+    phpbbmodders.documentation.helper:
+        class: phpbbmodders\documentation\controller\documentation_helper
+        arguments:
+            - '@config'
+            - '@language'
+            - '@request'
+            - '@user'
+            - '%core.root_path%'
+
+    phpbbmodders.documentation.controller:
+        class: phpbbmodders\documentation\controller\documentation_controller
+        arguments:
+            - '@auth'
+            - '@config'
+            - '@controller.helper'
+            - '@template'
+            - '@user'
+            - '@phpbbmodders.documentation.helper'
+            - '%core.root_path%'
+            - '%core.php_ext%'
+
+    phpbbmodders.documentation.listener:
+        class: phpbbmodders\documentation\event\listener
+        arguments:
+            - '@auth'
+            - '@config'
+            - '@controller.helper'
+            - '@phpbbmodders.documentation.helper'
+            - '@template'
+        tags:
+            - { name: event.listener }
+
+    phpbbmodders.documentation.acp_listener:
+        class: phpbbmodders\documentation\event\acp_listener
+        arguments:
+            - '@language'
+            - '@phpbbmodders.documentation.helper'
+            - '@template'
+        tags:
+            - { name: event.listener }
+
+    phpbbmodders.documentation.permission_sync:
+        class: phpbbmodders\documentation\acp\permission_sync
+        arguments:
+            - '@dbal.conn'
+            - '@cache'
+            - '@auth'
+            - '@notification_manager'
+            - '@phpbbmodders.documentation.helper'
+            - '%core.root_path%'
+            - '%core.php_ext%'
+
+    notification.type.phpbbmodders_documentation_no_build:
+        class: phpbbmodders\documentation\notification\type\no_docs_build
+        shared: false
+        parent: notification.type.base
+        calls:
+            - [set_config, ['@config']]
+        tags:
+            - { name: notification.type }

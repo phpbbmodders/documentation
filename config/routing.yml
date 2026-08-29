@@ -1,0 +1,22 @@
+phpbbmodders_documentation_root:
+    path:             /documentation
+    defaults:
+        _controller:  phpbbmodders.documentation.controller:handle
+        lang:         ~
+        path:         ''
+
+phpbbmodders_documentation_lang_root:
+    path:             /documentation/{lang}
+    defaults:
+        _controller:  phpbbmodders.documentation.controller:handle
+        path:         ''
+    requirements:
+        lang:         '[A-Za-z0-9_-]+'
+
+phpbbmodders_documentation_page:
+    path:             /documentation/{lang}/{path}
+    defaults:
+        _controller:  phpbbmodders.documentation.controller:handle
+    requirements:
+        lang:         '[A-Za-z0-9_-]+'
+        path:         '.+'

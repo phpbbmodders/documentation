@@ -1,0 +1,48 @@
+.documentation-breadcrumb {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 10px;
+}
+
+.documentation-language-picker a {
+	margin-left: 8px;
+}
+
+.documentation-language-current {
+	font-weight: bold;
+	text-decoration: underline;
+}
+
+.documentation-grid {
+	display: grid;
+	grid-template-columns: 260px 1fr;
+	gap: 20px;
+}
+
+@media (max-width: 700px) {
+	.documentation-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.documentation-sidebar .docs-tree ul {
+	list-style: none;
+	margin: 0 0 10px 12px;
+	padding: 0;
+}
+
+.documentation-sidebar .docs-tree a.active {
+	font-weight: bold;
+}
+
+.documentation-image-missing {
+	display: inline-block;
+	padding: 8px 12px;
+	border: 1px dashed #999;
+	border-radius: 4px;
+	color: #666;
+	font-style: italic;
+}

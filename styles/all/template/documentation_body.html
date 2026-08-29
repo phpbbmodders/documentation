@@ -1,0 +1,37 @@
+{% include 'overall_header.html' %}
+
+{% if S_DOCUMENTATION_USED_FALLBACK %}
+<div class="rules">
+	<div class="inner">
+		<strong>{{ L_INFORMATION }}{{ L_COLON }}</strong> {{ L_DOCUMENTATION_PAGE_FALLBACK }}
+	</div>
+</div>
+{% endif %}
+
+<div class="documentation-breadcrumb">
+	{{ DOCUMENTATION_BREADCRUMB }}
+
+	{% if S_DOCUMENTATION_MANUAL_SWITCH %}
+	<div class="documentation-language-picker">
+		<span class="sr-only">{{ L_LANGUAGE }}{{ L_COLON }}</span>
+		{% for documentation_language in documentation_language %}
+			<a href="{{ documentation_language.U_SELECT }}"{% if documentation_language.S_CURRENT %} class="documentation-language-current"{% endif %}>{{ documentation_language.LABEL }}</a>
+		{% endfor %}
+	</div>
+	{% endif %}
+</div>
+
+<div class="documentation-grid">
+	<aside class="documentation-sidebar">
+		{{ DOCUMENTATION_SIDEBAR }}
+	</aside>
+	<main class="documentation-main">
+		<article class="documentation-article">
+			{{ DOCUMENTATION_ARTICLE }}
+		</article>
+	</main>
+</div>
+
+{% INCLUDEJS 'js/documentation.js' %}
+
+{% include 'overall_footer.html' %}

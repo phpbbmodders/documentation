@@ -1,0 +1,31 @@
+{
+	"name": "phpbbmodders/documentation",
+	"type": "phpbb-extension",
+	"description": "Renders the forum's built Hugo documentation site natively inside phpBB, styled with the active phpBB theme, with a manual/automatic language picker and per-section/per-language permissions.",
+	"homepage": "https://www.phpbbmodders.com/",
+	"version": "1.0.0-dev",
+	"time": "2026-08-29",
+	"keywords": ["phpbb", "extension", "documentation"],
+	"license": "GPL-2.0-only",
+	"authors": [
+		{
+			"name": "phpBB Modders",
+			"homepage": "https://www.phpbbmodders.com/",
+			"role": "Extension Developer"
+		}
+	],
+	"require": {
+		"php": ">=8.0.0",
+		"phpbb/phpbb": ">=3.3.0",
+		"composer/installers": "^1.0 || ^2.0"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^9.6"
+	},
+	"extra": {
+		"display-name": "Documentation",
+		"soft-require": {
+			"phpbb/phpbb": ">=3.3.0"
+		}
+	}
+}
