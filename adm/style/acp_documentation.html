@@ -38,9 +38,32 @@
 			<dd><input type="text" id="phpbbmodders_documentation_fallback_lang" name="phpbbmodders_documentation_fallback_lang" value="{{ DOCUMENTATION_FALLBACK_LANG }}" class="tiny"></dd>
 		</dl>
 		<dl>
+			<dt><label for="phpbbmodders_documentation_enabled">{{ lang('ACP_DOCUMENTATION_ENABLED') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_ENABLED_EXPLAIN') }}</span></dt>
+			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_enabled" name="phpbbmodders_documentation_enabled" value="1"{% if S_DOCUMENTATION_ENABLED %} checked="checked"{% endif %}> {{ lang('ENABLED') }}</label>
+				<label><input type="radio" class="radio" name="phpbbmodders_documentation_enabled" value="0"{% if not S_DOCUMENTATION_ENABLED %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_split_nav_links">{{ lang('ACP_DOCUMENTATION_SPLIT_NAV_LINKS') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_SPLIT_NAV_LINKS_EXPLAIN') }}</span></dt>
+			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_split_nav_links" name="phpbbmodders_documentation_split_nav_links" value="1"{% if S_DOCUMENTATION_SPLIT_NAV_LINKS %} checked="checked"{% endif %}> {{ lang('ENABLED') }}</label>
+				<label><input type="radio" class="radio" name="phpbbmodders_documentation_split_nav_links" value="0"{% if not S_DOCUMENTATION_SPLIT_NAV_LINKS %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>
+		</dl>
+		<dl>
 			<dt><label for="phpbbmodders_documentation_nav_link">{{ lang('ACP_DOCUMENTATION_NAV_LINK') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_NAV_LINK_EXPLAIN') }}</span></dt>
 			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_nav_link" name="phpbbmodders_documentation_nav_link" value="1"{% if S_DOCUMENTATION_NAV_LINK %} checked="checked"{% endif %}> {{ lang('ENABLED') }}</label>
 				<label><input type="radio" class="radio" name="phpbbmodders_documentation_nav_link" value="0"{% if not S_DOCUMENTATION_NAV_LINK %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_nav_label_map">{{ lang('ACP_DOCUMENTATION_NAV_LABEL_MAP') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_NAV_LABEL_MAP_EXPLAIN') }}</span></dt>
+			<dd><textarea id="phpbbmodders_documentation_nav_label_map" name="phpbbmodders_documentation_nav_label_map" rows="4" cols="40">{{ DOCUMENTATION_NAV_LABEL_MAP }}</textarea></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_devdocs_nav_link">{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LINK') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LINK_EXPLAIN') }}</span></dt>
+			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_devdocs_nav_link" name="phpbbmodders_documentation_devdocs_nav_link" value="1"{% if S_DOCUMENTATION_DEVDOCS_NAV_LINK %} checked="checked"{% endif %}> {{ lang('ENABLED') }}</label>
+				<label><input type="radio" class="radio" name="phpbbmodders_documentation_devdocs_nav_link" value="0"{% if not S_DOCUMENTATION_DEVDOCS_NAV_LINK %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_devdocs_nav_label_map">{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP_EXPLAIN') }}</span></dt>
+			<dd><textarea id="phpbbmodders_documentation_devdocs_nav_label_map" name="phpbbmodders_documentation_devdocs_nav_label_map" rows="4" cols="40">{{ DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP }}</textarea></dd>
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_manual_switch">{{ lang('ACP_DOCUMENTATION_MANUAL_SWITCH') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_MANUAL_SWITCH_EXPLAIN') }}</span></dt>

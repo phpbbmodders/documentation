@@ -18,11 +18,16 @@ use phpbbmodders\documentation\controller\documentation_helper;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
- * Injects the "Documentation" link into phpBB's top navbar, only for users
- * who hold at least one section permission and at least one language
- * permission — and only if the ACP setting for it is enabled. Disabling
- * the nav link only hides it; the documentation itself stays reachable by
- * URL for anyone with the underlying permissions.
+ * Injects the "Documentation" link into phpBB's top navbar — and, if the
+ * ACP's "split" setting is on, a second independent "Developer
+ * Documentation" link — only for users who hold at least one relevant
+ * section permission and at least one language permission, and only if
+ * each link's own ACP setting is enabled. Disabling a nav link only
+ * hides it; its documentation stays reachable by URL for anyone with the
+ * underlying permissions. The master "enabled" setting is the one
+ * exception: turning that off takes the documentation offline entirely,
+ * hiding both links and returning 503 from both routes (see
+ * documentation_controller).
  */
 class listener implements EventSubscriberInterface
 {
@@ -114,24 +119,84 @@ class listener implements EventSubscriberInterface
 	}
 
 	/**
+	 * Builds both nav links every time (rather than a single combined
+	 * one) and lets the "split" config decide which of them actually
+	 * render — see overall_header_navigation_append.html. Under the
+	 * default combined mode this reproduces the extension's original
+	 * single-link behavior exactly; splitting only changes which of the
+	 * two S_..._NAV_VISIBLE flags can independently be true.
+	 *
 	 * @return void
 	 */
 	public function add_navigation_link()
 	{
-		$visible = (bool) $this->config['phpbbmodders_documentation_nav_link']
-			&& $this->doc_helper->get_docs_root() !== false
-			&& $this->has_any_access();
+		$blank = array(
+			'S_DOCUMENTATION_NAV_VISIBLE'          => false,
+			'U_DOCUMENTATION'                      => '',
+			'DOCUMENTATION_NAV_TEXT'               => '',
+			'S_DOCUMENTATION_DEVDOCS_NAV_VISIBLE'  => false,
+			'U_DOCUMENTATION_DEVDOCS'              => '',
+			'DOCUMENTATION_DEVDOCS_NAV_TEXT'       => '',
+		);
+
+		if (!(bool) $this->config['phpbbmodders_documentation_enabled'] || $this->doc_helper->get_docs_root() === false)
+		{
+			$this->template->assign_vars($blank);
+
+			return;
+		}
+
+		if (!(bool) $this->config['phpbbmodders_documentation_split_nav_links'])
+		{
+			$visible = (bool) $this->config['phpbbmodders_documentation_nav_link'] && $this->has_any_access();
+
+			$this->template->assign_vars(array_merge($blank, array(
+				'S_DOCUMENTATION_NAV_VISIBLE' => $visible,
+				'U_DOCUMENTATION'             => $visible ? $this->controller_helper->route('phpbbmodders_documentation_root') : '',
+				'DOCUMENTATION_NAV_TEXT'      => $visible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION') : '',
+			)));
+
+			return;
+		}
+
+		$docs_visible = (bool) $this->config['phpbbmodders_documentation_nav_link'] && $this->has_any_access(false);
+		$devdocs_visible = (bool) $this->config['phpbbmodders_documentation_devdocs_nav_link'] && $this->has_any_access(true);
 
 		$this->template->assign_vars(array(
-			'S_DOCUMENTATION_NAV_VISIBLE' => $visible,
-			'U_DOCUMENTATION'             => $visible ? $this->controller_helper->route('phpbbmodders_documentation_root') : '',
+			'S_DOCUMENTATION_NAV_VISIBLE'         => $docs_visible,
+			'U_DOCUMENTATION'                     => $docs_visible ? $this->controller_helper->route('phpbbmodders_documentation_root') : '',
+			'DOCUMENTATION_NAV_TEXT'              => $docs_visible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION') : '',
+
+			'S_DOCUMENTATION_DEVDOCS_NAV_VISIBLE' => $devdocs_visible,
+			'U_DOCUMENTATION_DEVDOCS'             => $devdocs_visible ? $this->devdocs_url() : '',
+			'DOCUMENTATION_DEVDOCS_NAV_TEXT'      => $devdocs_visible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_devdocs_nav_label_map', 'DOCUMENTATION_DEV') : '',
 		));
 	}
 
 	/**
+	 * The docs-only link reuses the extension's existing lang-less root
+	 * route (the controller resolves + redirects to the viewer's actual
+	 * language, same as it always has). There's no equivalent lang-less
+	 * route for a fixed path, so the developer-docs link resolves the
+	 * language up front instead and links straight to the resolved URL.
+	 *
+	 * @return string
+	 */
+	protected function devdocs_url()
+	{
+		return $this->controller_helper->route('phpbbmodders_documentation_page', array(
+			'lang' => $this->doc_helper->resolve_default_language(),
+			'path' => documentation_helper::DEVDOCS_SECTION,
+		));
+	}
+
+	/**
+	 * @param bool|null $devdocs_only null: any section counts (combined
+	 *        mode). true: only the developer-docs section counts. false:
+	 *        only non-developer-docs sections count.
 	 * @return bool
 	 */
-	protected function has_any_access()
+	protected function has_any_access($devdocs_only = null)
 	{
 		foreach ($this->doc_helper->get_available_languages() as $lang)
 		{
@@ -142,6 +207,11 @@ class listener implements EventSubscriberInterface
 
 			foreach ($this->doc_helper->get_available_sections($lang) as $section)
 			{
+				if ($devdocs_only !== null && $this->doc_helper->is_devdocs_section($section) !== $devdocs_only)
+				{
+					continue;
+				}
+
 				if ($this->auth->acl_get('u_phpbbmodders_documentation_' . $section))
 				{
 					return true;

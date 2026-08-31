@@ -24,6 +24,16 @@ class documentation_helper
 {
 	const COOKIE_NAME = 'phpbb_docs_lang';
 
+	/**
+	 * The one top-level section name the developer docs build produces
+	 * (see phpbbdocs_hugo_devdocs.sh) — the sole boundary between
+	 * "Documentation" and "Developer Documentation" when the nav is
+	 * split into two links. Not admin-configurable: this already matches
+	 * how the Hugo build itself separates the two document sets, so
+	 * there's no real scenario where it needs to move.
+	 */
+	const DEVDOCS_SECTION = 'development';
+
 	/** @var config */
 	protected $config;
 
@@ -255,6 +265,15 @@ class documentation_helper
 	}
 
 	/**
+	 * @param string $section
+	 * @return bool
+	 */
+	public function is_devdocs_section($section)
+	{
+		return $section === self::DEVDOCS_SECTION;
+	}
+
+	/**
 	 * @return string
 	 */
 	public function get_fallback_language()
@@ -406,9 +425,22 @@ class documentation_helper
 	 */
 	protected function get_language_overrides()
 	{
-		$overrides = array();
+		return $this->parse_code_value_map((string) $this->config['phpbbmodders_documentation_lang_map']);
+	}
 
-		foreach (preg_split('/[\r\n,]+/', (string) $this->config['phpbbmodders_documentation_lang_map']) as $line)
+	/**
+	 * Shared parser for this extension's "one code=value pair per line"
+	 * config format — used for the docs-language-code overrides above,
+	 * and for the per-phpBB-language nav link label overrides below.
+	 *
+	 * @param string $raw
+	 * @return array normalized-code => value
+	 */
+	protected function parse_code_value_map($raw)
+	{
+		$map = array();
+
+		foreach (preg_split('/[\r\n,]+/', $raw) as $line)
 		{
 			$line = trim($line);
 			if ($line === '' || strpos($line, '=') === false)
@@ -419,11 +451,40 @@ class documentation_helper
 			list($from, $to) = array_map('trim', explode('=', $line, 2));
 			if ($from !== '' && $to !== '')
 			{
-				$overrides[strtolower(str_replace('_', '-', $from))] = $to;
+				$map[strtolower(str_replace('_', '-', $from))] = $to;
 			}
 		}
 
-		return $overrides;
+		return $map;
+	}
+
+	/**
+	 * Display text for a nav link: an ACP-configured override for the
+	 * viewer's own phpBB language, if one exists in $config_key's
+	 * "code=text" map, else the given language key's default string.
+	 * Unlike the docs-language overrides above (keyed by docs-build
+	 * language), this is keyed by the *viewer's phpBB interface
+	 * language* — a plain phpBB config value has no per-language
+	 * variants of its own, so this is what makes an override still
+	 * translate per viewer instead of becoming one fixed string for
+	 * everyone regardless of their own forum language.
+	 *
+	 * @param string $config_key      Config key holding the "code=text" override map.
+	 * @param string $default_lang_key Language key to fall back to (e.g. 'DOCUMENTATION').
+	 * @return string
+	 */
+	public function get_nav_label($config_key, $default_lang_key)
+	{
+		$overrides = $this->parse_code_value_map((string) $this->config[$config_key]);
+		$user_lang = isset($this->user->data['user_lang']) ? (string) $this->user->data['user_lang'] : '';
+		$normalized = strtolower(str_replace('_', '-', $user_lang));
+
+		if ($normalized !== '' && isset($overrides[$normalized]))
+		{
+			return $overrides[$normalized];
+		}
+
+		return $this->language->lang($default_lang_key);
 	}
 
 	/**

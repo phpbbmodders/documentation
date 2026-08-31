@@ -67,10 +67,15 @@ class main_module
 		$cfg_array = array(
 			'phpbbmodders_documentation_docs_path'     => (string) $config['phpbbmodders_documentation_docs_path'],
 			'phpbbmodders_documentation_fallback_lang' => (string) $config['phpbbmodders_documentation_fallback_lang'],
+			'phpbbmodders_documentation_enabled'       => (bool) $config['phpbbmodders_documentation_enabled'],
+			'phpbbmodders_documentation_split_nav_links' => (bool) $config['phpbbmodders_documentation_split_nav_links'],
 			'phpbbmodders_documentation_manual_switch' => (bool) $config['phpbbmodders_documentation_manual_switch'],
 			'phpbbmodders_documentation_nav_link'      => (bool) $config['phpbbmodders_documentation_nav_link'],
+			'phpbbmodders_documentation_devdocs_nav_link' => (bool) $config['phpbbmodders_documentation_devdocs_nav_link'],
 			'phpbbmodders_documentation_notify_recipients' => (string) $config['phpbbmodders_documentation_notify_recipients'],
 			'phpbbmodders_documentation_lang_map'      => (string) $config['phpbbmodders_documentation_lang_map'],
+			'phpbbmodders_documentation_nav_label_map' => (string) $config['phpbbmodders_documentation_nav_label_map'],
+			'phpbbmodders_documentation_devdocs_nav_label_map' => (string) $config['phpbbmodders_documentation_devdocs_nav_label_map'],
 		);
 
 		if ($cfg_array['phpbbmodders_documentation_fallback_lang'] === '')
@@ -90,11 +95,16 @@ class main_module
 		{
 			$cfg_array['phpbbmodders_documentation_docs_path'] = $request->variable('phpbbmodders_documentation_docs_path', '');
 			$cfg_array['phpbbmodders_documentation_fallback_lang'] = $request->variable('phpbbmodders_documentation_fallback_lang', '');
+			$cfg_array['phpbbmodders_documentation_enabled'] = $request->variable('phpbbmodders_documentation_enabled', false);
+			$cfg_array['phpbbmodders_documentation_split_nav_links'] = $request->variable('phpbbmodders_documentation_split_nav_links', false);
 			$cfg_array['phpbbmodders_documentation_manual_switch'] = $request->variable('phpbbmodders_documentation_manual_switch', false);
 			$cfg_array['phpbbmodders_documentation_nav_link'] = $request->variable('phpbbmodders_documentation_nav_link', false);
+			$cfg_array['phpbbmodders_documentation_devdocs_nav_link'] = $request->variable('phpbbmodders_documentation_devdocs_nav_link', false);
 			$notify_recipients = $request->variable('phpbbmodders_documentation_notify_recipients', 'founders');
 			$cfg_array['phpbbmodders_documentation_notify_recipients'] = in_array($notify_recipients, array('founders', 'founders_admins'), true) ? $notify_recipients : 'founders';
 			$cfg_array['phpbbmodders_documentation_lang_map'] = $request->variable('phpbbmodders_documentation_lang_map', '', true);
+			$cfg_array['phpbbmodders_documentation_nav_label_map'] = $request->variable('phpbbmodders_documentation_nav_label_map', '', true);
+			$cfg_array['phpbbmodders_documentation_devdocs_nav_label_map'] = $request->variable('phpbbmodders_documentation_devdocs_nav_label_map', '', true);
 
 			foreach ($cfg_array as $key => $value)
 			{
@@ -129,10 +139,15 @@ class main_module
 
 			'DOCUMENTATION_DOCS_PATH'     => $cfg_array['phpbbmodders_documentation_docs_path'],
 			'DOCUMENTATION_FALLBACK_LANG' => $cfg_array['phpbbmodders_documentation_fallback_lang'],
+			'S_DOCUMENTATION_ENABLED'     => $cfg_array['phpbbmodders_documentation_enabled'],
+			'S_DOCUMENTATION_SPLIT_NAV_LINKS' => $cfg_array['phpbbmodders_documentation_split_nav_links'],
 			'S_DOCUMENTATION_MANUAL_SWITCH' => $cfg_array['phpbbmodders_documentation_manual_switch'],
 			'S_DOCUMENTATION_NAV_LINK'    => $cfg_array['phpbbmodders_documentation_nav_link'],
+			'S_DOCUMENTATION_DEVDOCS_NAV_LINK' => $cfg_array['phpbbmodders_documentation_devdocs_nav_link'],
 			'S_DOCUMENTATION_NOTIFY_FOUNDERS_ADMINS' => $cfg_array['phpbbmodders_documentation_notify_recipients'] === 'founders_admins',
 			'DOCUMENTATION_LANG_MAP'      => $cfg_array['phpbbmodders_documentation_lang_map'],
+			'DOCUMENTATION_NAV_LABEL_MAP' => $cfg_array['phpbbmodders_documentation_nav_label_map'],
+			'DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP' => $cfg_array['phpbbmodders_documentation_devdocs_nav_label_map'],
 
 			'U_ACTION' => $this->u_action,
 		));
