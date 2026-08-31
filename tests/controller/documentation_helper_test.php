@@ -317,6 +317,66 @@ class documentation_helper_test extends TestCase
 		$this->assertSame('en', $helper->resolve_default_language());
 	}
 
+	public function test_is_devdocs_section()
+	{
+		$helper = $this->get_helper();
+
+		$this->assertTrue($helper->is_devdocs_section('development'));
+		$this->assertFalse($helper->is_devdocs_section('adminguide'));
+		$this->assertFalse($helper->is_devdocs_section(''));
+	}
+
+	public function test_get_nav_label_uses_an_override_for_the_viewers_own_language()
+	{
+		$language = $this->createMock(language::class);
+		$language->expects($this->never())->method('lang');
+
+		$helper = new documentation_helper(
+			$this->get_config(array('phpbbmodders_documentation_nav_label_map' => "en=Docs\nda=Dokumentation")),
+			$language,
+			$this->get_request(),
+			$this->get_user(true, 'da'),
+			''
+		);
+
+		$this->assertSame('Dokumentation', $helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION'));
+	}
+
+	public function test_get_nav_label_falls_back_to_the_language_string_when_no_override_matches()
+	{
+		$language = $this->createMock(language::class);
+		$language->method('lang')->with('DOCUMENTATION_DEV')->willReturn('Developer Documentation');
+
+		// 'fr' isn't in the override map below, so this must fall
+		// through to the default language string rather than, say,
+		// silently returning an empty string.
+		$helper = new documentation_helper(
+			$this->get_config(array('phpbbmodders_documentation_devdocs_nav_label_map' => 'en=Dev Docs')),
+			$language,
+			$this->get_request(),
+			$this->get_user(true, 'fr'),
+			''
+		);
+
+		$this->assertSame('Developer Documentation', $helper->get_nav_label('phpbbmodders_documentation_devdocs_nav_label_map', 'DOCUMENTATION_DEV'));
+	}
+
+	public function test_get_nav_label_falls_back_when_the_override_map_is_empty()
+	{
+		$language = $this->createMock(language::class);
+		$language->method('lang')->with('DOCUMENTATION')->willReturn('Documentation');
+
+		$helper = new documentation_helper(
+			$this->get_config(),
+			$language,
+			$this->get_request(),
+			$this->get_user(true, 'en'),
+			''
+		);
+
+		$this->assertSame('Documentation', $helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION'));
+	}
+
 	public function test_resolve_default_language_uses_a_configured_override_when_no_broad_match_exists()
 	{
 		// 'no' (Norwegian, phpBB's code) has no broad-language match

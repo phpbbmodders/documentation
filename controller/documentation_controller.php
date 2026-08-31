@@ -67,6 +67,11 @@ class documentation_controller
 	{
 		$path = trim((string) $path, '/');
 
+		if (!(bool) $this->config['phpbbmodders_documentation_enabled'])
+		{
+			throw new http_exception(503, 'DOCUMENTATION_DISABLED');
+		}
+
 		if ($this->doc_helper->get_docs_root() === false)
 		{
 			throw new http_exception(503, 'DOCUMENTATION_NOT_BUILT');
@@ -94,7 +99,7 @@ class documentation_controller
 			return $this->access_denied_response();
 		}
 
-		$allowed_sections = $this->allowed_sections($lang);
+		$allowed_sections = $this->allowed_sections($lang, $section);
 
 		if ($section === '' ? empty($allowed_sections) : !in_array($section, $allowed_sections, true))
 		{
@@ -141,18 +146,32 @@ class documentation_controller
 
 	/**
 	 * @param string $lang
+	 * @param string $current_section The section of the page actually
+	 *        being requested — used to scope the result to just its own
+	 *        side (docs vs. developer docs) when the nav is split into
+	 *        two links, so e.g. a Developer Documentation page's sidebar
+	 *        never lists end-user sections and vice versa.
 	 * @return array Section slugs the current user may view in $lang.
 	 */
-	protected function allowed_sections($lang)
+	protected function allowed_sections($lang, $current_section = '')
 	{
 		$allowed = array();
+		$split = (bool) $this->config['phpbbmodders_documentation_split_nav_links'];
+		$devdocs_side = $split && $this->doc_helper->is_devdocs_section($current_section);
 
 		foreach ($this->doc_helper->get_available_sections($lang) as $section)
 		{
-			if ($this->auth->acl_get('u_phpbbmodders_documentation_' . $section))
+			if (!$this->auth->acl_get('u_phpbbmodders_documentation_' . $section))
 			{
-				$allowed[] = $section;
+				continue;
 			}
+
+			if ($split && $this->doc_helper->is_devdocs_section($section) !== $devdocs_side)
+			{
+				continue;
+			}
+
+			$allowed[] = $section;
 		}
 
 		return $allowed;

@@ -31,8 +31,23 @@ $lang = array_merge($lang, array(
 	'ACP_DOCUMENTATION_FALLBACK_LANG'         => 'Fallback language',
 	'ACP_DOCUMENTATION_FALLBACK_LANG_EXPLAIN' => 'Used when a page or a whole language isn’t available. Pre-filled from the board’s default language.',
 
-	'ACP_DOCUMENTATION_NAV_LINK'         => 'Show in navigation bar',
-	'ACP_DOCUMENTATION_NAV_LINK_EXPLAIN' => 'Add a “Documentation” entry to the forum’s top navigation bar. Disabling this only hides the link — the documentation itself stays reachable at its URL for anyone with permission.',
+	'ACP_DOCUMENTATION_ENABLED'         => 'Documentation enabled',
+	'ACP_DOCUMENTATION_ENABLED_EXPLAIN' => 'Master switch for the whole documentation system. Disabling this takes it offline entirely — both navigation links disappear and the documentation URLs stop responding — but this settings page stays reachable, unlike disabling the extension itself from Customise » Extensions.',
+
+	'ACP_DOCUMENTATION_SPLIT_NAV_LINKS'         => 'Separate navigation links',
+	'ACP_DOCUMENTATION_SPLIT_NAV_LINKS_EXPLAIN' => 'Show “Documentation” and “Developer Documentation” as two independent links instead of one combined link. When separate, each page’s sidebar only lists sections from its own side too — a Developer Documentation page never lists end-user sections and vice versa.',
+
+	'ACP_DOCUMENTATION_NAV_LINK'         => 'Show “Documentation” in navigation bar',
+	'ACP_DOCUMENTATION_NAV_LINK_EXPLAIN' => 'Add a “Documentation” entry to the forum’s top navigation bar. Disabling this only hides the link — the documentation itself stays reachable at its URL for anyone with permission, so you can link it from your own site menu instead.',
+
+	'ACP_DOCUMENTATION_DEVDOCS_NAV_LINK'         => 'Show “Developer Documentation” in navigation bar',
+	'ACP_DOCUMENTATION_DEVDOCS_NAV_LINK_EXPLAIN' => 'Only used when separate navigation links are on, above. Same behavior as the “Documentation” link’s own toggle: disabling this only hides the link, the developer documentation itself stays reachable at its URL.',
+
+	'ACP_DOCUMENTATION_NAV_LABEL_MAP'         => '“Documentation” link text overrides',
+	'ACP_DOCUMENTATION_NAV_LABEL_MAP_EXPLAIN' => 'Override the “Documentation” link’s text for specific phpBB board languages. One override per line, as phpbb_lang_code=text. A board language not listed here shows the default text, translated normally.',
+
+	'ACP_DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP'         => '“Developer Documentation” link text overrides',
+	'ACP_DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP_EXPLAIN' => 'Same as the “Documentation” link’s text overrides above, but for the “Developer Documentation” link. Only used when separate navigation links are on.',
 
 	'ACP_DOCUMENTATION_MANUAL_SWITCH'         => 'Manual language switcher',
 	'ACP_DOCUMENTATION_MANUAL_SWITCH_EXPLAIN' => 'Let users pick a documentation language independently of their forum language.',
