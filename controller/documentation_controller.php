@@ -1,9 +1,9 @@
 <?php
 /**
  *
- * Documentation extension for the phpBB Forum Software package.
+ * Documentation extension for the phpBB Forum Software package
  *
- * @copyright (c) phpBB Modders
+ * @copyright (c) 2026, phpBB Modders, https://www.phpbbmodders.com/
  * @license GNU General Public License, version 2 (GPL-2.0)
  *
  */

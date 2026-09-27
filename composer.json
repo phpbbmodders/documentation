@@ -5,11 +5,17 @@
 	"homepage": "https://www.phpbbmodders.com/",
 	"version": "1.0.0-dev",
 	"time": "2026-08-29",
-	"keywords": ["phpbb", "extension", "documentation"],
+	"keywords": [
+		"phpbb",
+		"extension",
+		"documentation",
+		"hugo"
+	],
 	"license": "GPL-2.0-only",
 	"authors": [
 		{
 			"name": "phpBB Modders",
+			"email": "board@phpbbmodders.com",
 			"homepage": "https://www.phpbbmodders.com/",
 			"role": "Extension Developer"
 		}
