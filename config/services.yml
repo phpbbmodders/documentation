@@ -28,6 +28,7 @@ services:
             - '@controller.helper'
             - '@phpbbmodders.documentation.helper'
             - '@template'
+            - '@phpbbmodders.documentation.permission_sync'
         tags:
             - { name: event.listener }
 
