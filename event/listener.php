@@ -46,13 +46,17 @@ class listener implements EventSubscriberInterface
 	/** @var template */
 	protected $template;
 
-	public function __construct(auth $auth, config $config, controller_helper $controller_helper, documentation_helper $doc_helper, template $template)
+	/** @var \phpbbmodders\documentation\acp\permission_sync */
+	protected $permission_sync;
+
+	public function __construct(auth $auth, config $config, controller_helper $controller_helper, documentation_helper $doc_helper, template $template, \phpbbmodders\documentation\acp\permission_sync $permission_sync)
 	{
 		$this->auth = $auth;
 		$this->config = $config;
 		$this->controller_helper = $controller_helper;
 		$this->doc_helper = $doc_helper;
 		$this->template = $template;
+		$this->permission_sync = $permission_sync;
 	}
 
 	/**
@@ -79,6 +83,16 @@ class listener implements EventSubscriberInterface
 	 */
 	public function user_setup($event)
 	{
+		// Finish the permission sync that the install migration couldn't
+		// run (see m1_initial_data::sync_permissions()). set_atomic() clears
+		// the flag and claims the sync in one step, so it runs only once.
+		if (!empty($this->config['phpbbmodders_documentation_sync_pending'])
+			&& $this->config->set_atomic('phpbbmodders_documentation_sync_pending', 1, 0))
+		{
+			$this->permission_sync->sync();
+			$this->config->delete('phpbbmodders_documentation_sync_pending');
+		}
+
 		$lang_set_ext = $event['lang_set_ext'];
 		$lang_set_ext[] = array(
 			'ext_name' => 'phpbbmodders/documentation',

@@ -60,6 +60,16 @@ class m1_initial_data extends \phpbb\db\migration\container_aware_migration
 	 */
 	public function sync_permissions()
 	{
+		// On a first install the extension's own services aren't in the
+		// container yet (the extension only counts as enabled once its
+		// migrations finish), so leave the sync to the listener, which runs
+		// it on the next request.
+		if (!$this->container->has('phpbbmodders.documentation.permission_sync'))
+		{
+			$this->config->set('phpbbmodders_documentation_sync_pending', 1);
+			return;
+		}
+
 		$this->container->get('phpbbmodders.documentation.permission_sync')->sync();
 	}
 }
