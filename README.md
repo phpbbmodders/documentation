@@ -1,66 +1,52 @@
 # Documentation
 
-Renders the forum's built Hugo documentation site natively inside phpBB,
-styled with the forum's own active style, with automatic/manual language
-selection and per-section/per-language permissions.
+[![Tests](https://github.com/phpbbmodders/documentation/actions/workflows/tests.yml/badge.svg)](https://github.com/phpbbmodders/documentation/actions/workflows/tests.yml) [![Lint](https://github.com/phpbbmodders/documentation/actions/workflows/lint.yml/badge.svg)](https://github.com/phpbbmodders/documentation/actions/workflows/lint.yml)
+
+Shows the board's Hugo documentation site inside phpBB, styled with the active board style.
+
+## Features
+
+- Serves a built Hugo docs site at `/documentation`, wrapped in the board's own style.
+- Language picker: automatic (from the user's language) or manual, with fallbacks and language-code overrides.
+- Per-section and per-language permissions, open to everyone by default.
+- Navigation links in the board header, and **Resync permissions** when new sections or languages are added.
+
+## Requirements
+
+- phpBB 3.3.0 or later
+- PHP 8.0 or later
 
 ## Installation
 
-1. Copy the extension to: `/ext/phpbbmodders/documentation`
-2. In the Administration Control Panel, navigate to: **Customise → Manage
-   extensions**
+1. Copy the extension to `/ext/phpbbmodders/documentation`
+2. In the Administration Control Panel, go to **Customise → Manage extensions**
 3. Enable the **Documentation** extension
-4. Point `proteus_hugo.sh`'s build output at the extension's own
-   `docs-build/` directory:
+4. Point `proteus_hugo.sh`'s build output at the extension's own `docs-build/` directory:
    `./proteus_hugo.sh all /path/to/ext/phpbbmodders/documentation/docs-build`
-   — this is also the default **docs build path** in the settings, so no
-   further ACP configuration is needed unless the build lives elsewhere
-5. That's it: documentation is open to everyone, including guests, by
-   default. Restrict it afterwards via the normal Permissions screens if
-   needed
+   This is also the default **docs build path** in the settings, so no further ACP configuration is needed unless the build lives elsewhere.
+5. Documentation is open to everyone, including guests, by default. Restrict it afterwards through the normal Permissions screens if needed.
+6. **Block direct web access to `docs-build/`** on anything other than Apache or LiteSpeed. Without it, the raw pages can be read directly, bypassing the extension's permissions. See [docs/securing-docs-build.md](docs/securing-docs-build.md) for Nginx, Caddy, IIS and lighttpd snippets.
 
-If you add a new top-level section or a new language to the docs build
-later, use the **Resync permissions** button on the settings page.
+If you add a new top-level section or a new language to the docs build later, use the **Resync permissions** button on the settings page.
 
-`docs-build/` is generated output, not source — it's gitignored (aside
-from a `.gitkeep` placeholder) and gets rebuilt from
-`proteus_doc_<lang>.xml` any time `proteus_hugo.sh` runs.
+### Language code overrides
 
-**`docs-build/` ships with an Apache `.htaccess` denying all direct web
-access**, the same pattern phpBB's own `cache/`, `files/`, `store/`, and
-`config/` directories use. This matters beyond tidiness: without it,
-anyone who knows or guesses the URL could browse the raw, un-styled Hugo
-pages directly and read a section/language your Permissions screens are
-restricting — bypassing the extension's ACL checks entirely, since those
-only run when a request goes through phpBB's own `/documentation/...`
-route. This has no effect on the extension's own PHP code, which reads
-these files directly off disk regardless of any of the below — a deny
-rule only blocks browser/HTTP access to the directory, never phpBB's own
-server-side reads.
+phpBB and the docs build don't always agree on language codes, regional variants especially (phpBB's `pt_br` vs. a docs build keyed `pt-BR`, for example). Matching codes and broad-language fallbacks are handled automatically; the **Language code overrides** field in the settings covers anything that still doesn't line up.
 
-The `.htaccess` only helps on **Apache with `AllowOverride` enabled for
-this path**, and on **LiteSpeed/OpenLiteSpeed**, which reads `.htaccess`
-natively for Apache compatibility — nothing further needed on either.
-Everything else needs an equivalent deny rule added at the server-config
-level, since none of them read `.htaccess`:
+## Contributing
 
-- **Nginx**: [`contrib/nginx-docs-build-deny.conf`](contrib/nginx-docs-build-deny.conf)
-- **Caddy**: [`contrib/caddy-docs-build-deny.conf`](contrib/caddy-docs-build-deny.conf)
-- **IIS**: [`contrib/iis-docs-build-deny.web.config`](contrib/iis-docs-build-deny.web.config)
-- **lighttpd**: [`contrib/lighttpd-docs-build-deny.conf`](contrib/lighttpd-docs-build-deny.conf)
+Contributions are welcome!
 
-Each is a drop-in snippet, not a full config file — merge it into your
-existing site config near phpBB's own equivalent "deny access to
-internal files" rule, don't replace your config with just that file.
+- **Bug reports**: [Open an issue](https://github.com/phpbbmodders/documentation/issues).
+- **Everything else** (questions, feature requests, ideas, general discussion): [Use Discussions](https://github.com/orgs/phpbbmodders/discussions), or the [community forum](https://www.phpbbmodders.com/community/).
+- Pull requests are welcome for bug fixes or discussed features.
 
-## Language code overrides
+## Acknowledgments
 
-phpBB and the docs build don't always agree on language codes, regional
-variants especially (phpBB's `pt_br` vs. a docs build keyed `pt-BR`, for
-example). Matching codes and broad-language fallbacks are handled
-automatically; the **Language code overrides** field in the settings
-covers anything that still doesn't line up.
+- Code review, bug fixes, and documentation assisted by [Claude](https://www.anthropic.com/claude).
 
 ## License
 
-Licensed under the [GNU General Public License v2](license.txt)
+This extension is licensed under the **GNU General Public License v2.0**.
+
+See [license.txt](license.txt) for more information.

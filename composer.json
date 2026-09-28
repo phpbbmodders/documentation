@@ -1,7 +1,7 @@
 {
 	"name": "phpbbmodders/documentation",
 	"type": "phpbb-extension",
-	"description": "Renders the forum's built Hugo documentation site natively inside phpBB, styled with the active phpBB theme, with a manual/automatic language picker and per-section/per-language permissions.",
+	"description": "Shows the board's Hugo documentation site inside phpBB, styled with the active board style.",
 	"homepage": "https://www.phpbbmodders.com/",
 	"version": "1.0.0-dev",
 	"time": "2026-08-29",
