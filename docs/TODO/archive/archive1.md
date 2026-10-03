@@ -8,9 +8,9 @@ These reports preserve historical review evidence. Refer to each section for its
 
 Archived: 10/02/2026. Review date: 10/01/2026. Historical review retained after subsequent search, navigation, styling, tooltip, and image-description changes extended the code beyond the reviewed scope. Archiving does not certify those newer changes or imply a fresh full-codebase review.
 
-Date: October 1, 2026  
-Repository: `phpbbmodders/documentation`  
-Reviewed commit: `4e214afcb610c03472ad277170cbe851de3cece9`  
+Date: October 1, 2026<br>
+Repository: `phpbbmodders/documentation`<br>
+Reviewed commit: `4e214afcb610c03472ad277170cbe851de3cece9`<br>
 Verdict: **NO_OUTSTANDING_FINDINGS**
 
 ### Scope
