@@ -33,6 +33,55 @@ If you add a new top-level section or a new language to the docs build later, us
 
 phpBB and the docs build don't always agree on language codes, regional variants especially (phpBB's `pt_br` vs. a docs build keyed `pt-BR`, for example). Matching codes and broad-language fallbacks are handled automatically; the **Language code overrides** field in the settings covers anything that still doesn't line up.
 
+### External menus
+
+Leave the documentation system enabled and disable both **Show in navigation bar**
+settings to hide the built-in links. Documentation remains accessible by URL.
+An external Twig menu can use `U_DOCUMENTATION` and `U_DOCUMENTATION_DEVDOCS`,
+with `DOCUMENTATION_NAV_TEXT` and `DOCUMENTATION_DEVDOCS_NAV_TEXT` as labels.
+These remain available in combined and separate navigation modes, but are empty
+when the viewer lacks access, the build is missing, or documentation is offline.
+Check the URL before rendering each external menu entry. The
+`S_DOCUMENTATION_NAV_VISIBLE` flags control only the built-in navigation.
+
+## Documentation search
+
+**Search documentation** searches titles and page text in the selected language.
+Every word must match; matching titles appear first. Results include excerpts and
+are limited to 50 pages. The sidebar **Filter** still filters titles only.
+
+Hugo generates a `search-index.json` file per language on each build. Rebuild with
+`phpbbdocs_hugo.sh` after changing content. Existing builds without that index
+continue to serve pages, but cannot provide full-text search.
+
+The phpBB search endpoint checks language and section permissions before returning
+results. Separate navigation limits results to the current documentation side.
+Keep raw access to `docs-build/` blocked, including its JSON indexes, as described
+in [docs/securing-docs-build.md](docs/securing-docs-build.md).
+
+## Tests
+
+Run PHPUnit 9.6 from the extension directory:
+
+```bash
+phpunit -c phpunit.xml.dist
+```
+
+The bootstrap finds phpBB automatically when the extension is installed at
+`ext/phpbbmodders/documentation`. For a standalone checkout, set the path to
+a phpBB installation with its Composer dependencies:
+
+```bash
+PHPBB_ROOT_PATH=/path/to/phpbb phpunit -c phpunit.xml.dist
+```
+
+The tests use temporary fixtures. The purge regression requires PHP's SQLite3
+extension and uses an in-memory database.
+
+## TODO
+
+Open documentation checks and archived reviews: [docs/TODO.md](docs/TODO.md).
+
 ## Contributing
 
 Contributions are welcome!

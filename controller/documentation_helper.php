@@ -11,14 +11,14 @@
 namespace phpbbmodders\documentation\controller;
 
 use phpbb\config\config;
+use phpbb\controller\helper as controller_helper;
 use phpbb\language\language;
 use phpbb\request\request_interface;
 use phpbb\user;
 
 /**
- * Pure logic for the documentation extension: language resolution, static
- * Hugo-build extraction, and path/lang validation. Deliberately free of any
- * phpBB template/response concerns so it's testable without a booted app.
+ * Language resolution, Hugo-build extraction, and path validation for the
+ * documentation extension. The controller helper supplies board URLs.
  */
 class documentation_helper
 {
@@ -49,19 +49,23 @@ class documentation_helper
 	/** @var string */
 	protected $phpbb_root_path;
 
+	/** @var controller_helper */
+	protected $controller_helper;
+
 	/** @var array|null cached code => label */
 	protected $language_labels;
 
 	/** @var array|null cached list of language codes present in the build */
 	protected $available_languages;
 
-	public function __construct(config $config, language $language, request_interface $request, user $user, $phpbb_root_path)
+	public function __construct(config $config, language $language, request_interface $request, user $user, $phpbb_root_path, controller_helper $controller_helper)
 	{
 		$this->config = $config;
 		$this->language = $language;
 		$this->request = $request;
 		$this->user = $user;
 		$this->phpbb_root_path = $phpbb_root_path;
+		$this->controller_helper = $controller_helper;
 	}
 
 	/**
@@ -487,6 +491,19 @@ class documentation_helper
 		return $this->language->lang($default_lang_key);
 	}
 
+	/** @return string A single Font Awesome icon class, or no icon. */
+	public function normalize_nav_icon($icon)
+	{
+		$icon = trim((string) $icon);
+		return strlen($icon) <= 64 && preg_match('/\Afa-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $icon) ? $icon : '';
+	}
+
+	public function get_nav_icon($config_key)
+	{
+		return !empty($this->config[$config_key . '_enabled']) && isset($this->config[$config_key])
+			? $this->normalize_nav_icon($this->config[$config_key]) : '';
+	}
+
 	/**
 	 * Persists a manually/automatically resolved language choice.
 	 *
@@ -519,7 +536,7 @@ class documentation_helper
 
 	/**
 	 * Resolves realpath-validated path to a page's index.html, containment
-	 * checked against the docs root.
+	 * checked against the selected language directory.
 	 *
 	 * @param string $lang
 	 * @param string $path
@@ -528,7 +545,9 @@ class documentation_helper
 	public function get_content_file($lang, $path)
 	{
 		$root = $this->get_docs_root();
-		if ($root === false || !$this->is_known_language($lang))
+		if ($root === false || !$this->is_known_language($lang)
+			|| strpos($path, "\0") !== false || strpos($path, '\\') !== false
+			|| preg_match('#(?:^|/)\.{1,2}(?:/|$)#', $path))
 		{
 			return false;
 		}
@@ -542,13 +561,147 @@ class documentation_helper
 			return false;
 		}
 
-		// Containment check: resolved file must still live under docs root.
-		if (strpos($real, $root . DIRECTORY_SEPARATOR) !== 0)
+		$lang_root = realpath($root . '/' . $lang);
+		if ($lang_root === false || strpos($lang_root, $root . DIRECTORY_SEPARATOR) !== 0
+			|| !is_file($real) || strpos($real, $lang_root . DIRECTORY_SEPARATOR) !== 0)
 		{
 			return false;
 		}
 
 		return $real;
+	}
+
+	/** Search only authorized pages in a contained, language-specific build index. */
+	public function search_pages($lang, $query, array $allowed_sections)
+	{
+		$root = $this->get_docs_root();
+		$lang_root = $root !== false ? realpath($root . '/' . $lang) : false;
+		$file = $lang_root !== false ? realpath($lang_root . '/search-index.json') : false;
+		if (!$this->is_known_language($lang) || $lang_root === false || $file === false
+			|| strpos($lang_root, $root . DIRECTORY_SEPARATOR) !== 0
+			|| strpos($file, $lang_root . DIRECTORY_SEPARATOR) !== 0
+			|| !is_file($file) || filesize($file) > 16 * 1024 * 1024)
+		{
+			return false;
+		}
+		$pages = json_decode(file_get_contents($file), true);
+		if (!is_array($pages))
+		{
+			return false;
+		}
+		$terms = preg_split('/\s+/u', mb_strtolower(trim($query)), -1, PREG_SPLIT_NO_EMPTY);
+		if (!$terms)
+		{
+			return array();
+		}
+		$results = array();
+		foreach ($pages as $page)
+		{
+			if (!is_array($page) || !isset($page['path'], $page['title'], $page['text'])
+				|| !is_string($page['path']) || !is_string($page['title']) || !is_string($page['text'])
+				|| !in_array($this->get_section($page['path']), $allowed_sections, true)
+				|| $this->get_content_file($lang, $page['path']) === false)
+			{
+				continue;
+			}
+			$text = trim(preg_replace('/\s+/u', ' ', html_entity_decode($page['text'], ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+			$page_title = html_entity_decode($page['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$title = mb_strtolower($page_title);
+			$body = mb_strtolower($text);
+			$score = 0;
+			$position = null;
+			foreach ($terms as $term)
+			{
+				$in_title = mb_strpos($title, $term) !== false;
+				$in_body = mb_strpos($body, $term);
+				if (!$in_title && $in_body === false)
+				{
+					continue 2;
+				}
+				$score += $in_title ? 2 : 1;
+				if ($in_body !== false && ($position === null || $in_body < $position))
+				{
+					$position = $in_body;
+				}
+			}
+			$start = max(0, (int) $position - 60);
+			$excerpt = ($start > 0 ? '...' : '') . mb_substr($text, $start, 240);
+			if (mb_strlen($text) > $start + 240)
+			{
+				$excerpt .= '...';
+			}
+			$results[] = array('title' => $page_title, 'excerpt' => $excerpt,
+				'url' => $this->controller_helper->route('phpbbmodders_documentation_page', array('lang' => $lang, 'path' => $page['path'])),
+				'score' => $score);
+		}
+		usort($results, function ($a, $b) {
+			return $b['score'] <=> $a['score'] ?: strcmp($a['title'], $b['title']);
+		});
+		return array_slice($results, 0, 50);
+	}
+
+	/** @return string|false An image contained in its own language build. */
+	public function get_image_file($lang, $path)
+	{
+		$root = $this->get_docs_root();
+		if ($root === false || !$this->is_known_language($lang)
+			|| strpos($path, "\0") !== false || strpos($path, '\\') !== false
+			|| preg_match('#(?:^|/)\.{1,2}(?:/|$)#', $path))
+		{
+			return false;
+		}
+		$lang_root = realpath($root . '/' . $lang);
+		$file = realpath($root . '/' . $lang . '/' . $path);
+		return $lang_root !== false && strpos($lang_root, $root . DIRECTORY_SEPARATOR) === 0
+			&& $file !== false && is_file($file) && strpos($file, $lang_root . DIRECTORY_SEPARATOR) === 0
+			? $file : false;
+	}
+
+	/** @return string|false Only images referenced by the supplied page may be served. */
+	public function get_referenced_image_file($page_lang, $page, $image_lang, $image_path)
+	{
+		if (strpos($page, "\0") !== false || strpos($page, '\\') !== false
+			|| preg_match('#(?:^|/)\.{1,2}(?:/|$)#', $page))
+		{
+			return false;
+		}
+		$file = $this->get_image_file($image_lang, $image_path);
+		$page_file = $this->get_content_file($page_lang, $page);
+		$lang_root = realpath($this->get_docs_root() . '/' . $page_lang);
+		if ($file === false || $page_file === false || $lang_root === false
+			|| strpos($page_file, $lang_root . DIRECTORY_SEPARATOR) !== 0)
+		{
+			return false;
+		}
+		$dom = new \DOMDocument();
+		$previous = libxml_use_internal_errors(true);
+		$loaded = $dom->loadHTMLFile($page_file);
+		libxml_clear_errors();
+		libxml_use_internal_errors($previous);
+		if (!$loaded)
+		{
+			return false;
+		}
+		$xpath = new \DOMXPath($dom);
+		$images = $xpath->query('//article[contains(concat(" ", normalize-space(@class), " "), " docs-article ")]//img');
+		foreach ($images as $image)
+		{
+			$relative = $this->resolve_image_relative_path($page_lang, $page, $image->getAttribute('src'));
+			if ($relative === false)
+			{
+				continue;
+			}
+			$referenced = $this->get_image_file($page_lang, $relative);
+			if ($referenced === false)
+			{
+				$referenced = $this->get_image_file($this->get_fallback_language(), $relative);
+			}
+			if ($referenced === $file)
+			{
+				return $file;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -559,15 +712,20 @@ class documentation_helper
 	 * @param string $path
 	 * @param array|null $allowed_sections Sections the current user may see;
 	 *        null skips filtering (used for permission-checking callers).
+	 * @param bool $allow_fallback False when the caller already authorized the selected language.
 	 * @return array|false ['lang', 'used_fallback', 'title', 'breadcrumb_html', 'sidebar_html', 'article_html']
 	 */
-	public function resolve_and_load($lang, $path, array $allowed_sections = null)
+	public function resolve_and_load($lang, $path, array $allowed_sections = null, $allow_fallback = true)
 	{
 		$file = $this->get_content_file($lang, $path);
 		$used_fallback = false;
 
 		if ($file === false)
 		{
+			if (!$allow_fallback)
+			{
+				return false;
+			}
 			$fallback_lang = $this->get_fallback_language();
 
 			if ($fallback_lang === $lang)
@@ -629,28 +787,48 @@ class documentation_helper
 			return false;
 		}
 
-		// Hugo's own nav/breadcrumb/language links are absolute
-		// (/<lang>/...), rooted at Hugo's own site, not phpBB's mount
-		// point — rewrite that one prefix so they point at our route
-		// instead. Relative markdown-authored links/images inside the
-		// article are left untouched; the route already mirrors Hugo's
-		// path depth so those resolve correctly on their own.
+		if (trim($path, '/') === 'development/extensions/events_list')
+		{
+			foreach (iterator_to_array($article_node->getElementsByTagName('table')) as $table)
+			{
+				$table->setAttribute('class', trim($table->getAttribute('class') . ' documentation-events-table'));
+				$table->setAttribute('data-columns', (string) $xpath->query('./thead/tr[1]/th', $table)->length);
+				$wrapper = $dom->createElement('div');
+				$wrapper->setAttribute('class', 'documentation-table-scroll');
+				$wrapper->setAttribute('tabindex', '0');
+				$wrapper->setAttribute('role', 'region');
+				$heading = $table->previousSibling;
+				while ($heading !== null && !($heading instanceof \DOMElement))
+				{
+					$heading = $heading->previousSibling;
+				}
+				$wrapper->setAttribute('aria-label', $heading !== null ? $heading->textContent : $title);
+				$table->parentNode->insertBefore($wrapper, $table);
+				$wrapper->appendChild($table);
+			}
+		}
+
+		// Filter and resolve images against Hugo paths before converting
+		// absolute URLs to phpBB routes, which may include app.php or a subdirectory.
 		if ($sidebar_node !== null)
 		{
-			$this->rewrite_absolute_links($sidebar_node, $lang);
-
 			if ($allowed_sections !== null)
 			{
 				$this->filter_sidebar_sections($sidebar_node, $allowed_sections);
 			}
+			$this->rewrite_absolute_links($sidebar_node);
 		}
 		if ($breadcrumb_node !== null)
 		{
-			$this->rewrite_absolute_links($breadcrumb_node, $lang);
+			// The extension supplies the permission-filtered language picker.
+			foreach (iterator_to_array($xpath->query('.//*[contains(concat(" ", normalize-space(@class), " "), " language-switcher ")]', $breadcrumb_node)) as $switcher)
+			{
+				$switcher->parentNode->removeChild($switcher);
+			}
+			$this->rewrite_absolute_links($breadcrumb_node);
 		}
-		$this->rewrite_absolute_links($article_node, $lang);
-
 		$this->process_images($article_node, $lang, $path);
+		$this->rewrite_absolute_links($article_node);
 
 		return array(
 			'title'           => $title,
@@ -663,7 +841,7 @@ class documentation_helper
 	/**
 	 * Removes .docs-tree-section blocks the current user isn't allowed to
 	 * see, identified by the section segment of each section link's
-	 * (already-rewritten) /documentation/<lang>/<section>/ href.
+	 * original Hugo /<lang>/<section>/ href before URL rewriting.
 	 *
 	 * @param \DOMNode $sidebar_node
 	 * @param array $allowed_sections
@@ -677,9 +855,9 @@ class documentation_helper
 		{
 			/** @var \DOMElement $section_node */
 			$link = $xpath->query('.//a', $section_node)->item(0);
-			$href = $link !== null ? $link->getAttribute('href') : '';
+			$href = $link !== null ? parse_url($link->getAttribute('href'), PHP_URL_PATH) : '';
 
-			if (preg_match('#^/documentation/[^/]+/([^/]+)#', $href, $matches) && in_array($matches[1], $allowed_sections, true))
+			if (is_string($href) && preg_match('#^/[^/]+/([^/]+)#', $href, $matches) && in_array($matches[1], $allowed_sections, true))
 			{
 				continue;
 			}
@@ -690,16 +868,14 @@ class documentation_helper
 
 	/**
 	 * Rewrites href/src attributes rooted at Hugo's own /<lang>/... site
-	 * root to phpBB's /documentation/<lang>/... route.
+	 * root to phpBB routes, including links to other build languages.
 	 *
 	 * @param \DOMNode $scope
-	 * @param string $lang
 	 * @return void
 	 */
-	protected function rewrite_absolute_links(\DOMNode $scope, $lang)
+	protected function rewrite_absolute_links(\DOMNode $scope)
 	{
 		$xpath = new \DOMXPath($scope->ownerDocument);
-		$prefix = '/' . $lang . '/';
 
 		foreach (array('href', 'src') as $attribute)
 		{
@@ -707,10 +883,28 @@ class documentation_helper
 			{
 				/** @var \DOMElement $node */
 				$value = $node->getAttribute($attribute);
-				if (strpos($value, $prefix) === 0)
+				if (!preg_match('~^/([A-Za-z0-9_-]+)(?:/|$|[?#])~', $value, $matches) || !$this->is_known_language($matches[1]))
 				{
-					$node->setAttribute($attribute, '/documentation' . $value);
+					continue;
 				}
+				$parts = parse_url($value);
+				if ($parts === false)
+				{
+					continue;
+				}
+				$path = ltrim(substr($parts['path'], strlen('/' . $matches[1])), '/');
+				$params = array();
+				if (isset($parts['query']))
+				{
+					parse_str($parts['query'], $params);
+				}
+				$params['lang'] = $matches[1];
+				if ($path !== '')
+				{
+					$params['path'] = $path;
+				}
+				$url = $this->controller_helper->route($path !== '' ? 'phpbbmodders_documentation_page' : 'phpbbmodders_documentation_lang_root', $params, false);
+				$node->setAttribute($attribute, $url . (isset($parts['fragment']) ? '#' . $parts['fragment'] : ''));
 			}
 		}
 	}
@@ -752,7 +946,6 @@ class documentation_helper
 	protected function process_images(\DOMNode $article_node, $lang, $path)
 	{
 		$dom = $article_node->ownerDocument;
-		$root = $this->get_docs_root();
 		$fallback_lang = $this->get_fallback_language();
 		$xpath = new \DOMXPath($dom);
 
@@ -767,19 +960,32 @@ class documentation_helper
 				continue;
 			}
 
-			if (is_file($root . '/' . $lang . '/' . $relative))
+			$image_lang = $lang;
+			$file = $this->get_image_file($lang, $relative);
+			if ($file === false && $lang !== $fallback_lang)
 			{
-				continue;
+				$image_lang = $fallback_lang;
+				$file = $this->get_image_file($fallback_lang, $relative);
 			}
-
-			if ($lang !== $fallback_lang && is_file($root . '/' . $fallback_lang . '/' . $relative))
+			if ($file !== false)
 			{
-				$img->setAttribute('src', '/documentation/' . $fallback_lang . '/' . $relative);
+				$img->setAttribute('src', $this->controller_helper->route('phpbbmodders_documentation_image', array(
+					'lang' => $image_lang,
+					'path' => $relative,
+					'page_lang' => $lang,
+					'page' => $path,
+				), false));
 				continue;
 			}
 
 			$notice = $dom->createElement('span');
 			$notice->setAttribute('class', 'documentation-image-missing');
+			$description = trim($img->getAttribute('alt'));
+			if ($description !== '')
+			{
+				$notice->setAttribute('data-doc-tooltip', $description);
+				$notice->setAttribute('tabindex', '0');
+			}
 			$notice->appendChild($dom->createTextNode($this->language->lang('DOCUMENTATION_IMAGE_MISSING')));
 			$img->parentNode->replaceChild($notice, $img);
 		}
@@ -787,8 +993,8 @@ class documentation_helper
 
 	/**
 	 * Resolves an <img src> — relative (dot-notation, relative to the
-	 * current page's own directory depth) or already rewritten absolute
-	 * (/documentation/<lang>/...) — to a path relative to that language's
+	 * current page's own directory depth) or absolute Hugo URL
+	 * (/<lang>/...) — to a path relative to that language's
 	 * build directory. Ignores external/absolute-elsewhere URLs.
 	 *
 	 * @param string $lang
@@ -802,16 +1008,19 @@ class documentation_helper
 		{
 			return false;
 		}
-
-		if (strpos($src, '/documentation/') === 0)
+		$src = parse_url($src, PHP_URL_PATH);
+		if (!is_string($src) || $src === '')
 		{
-			$segments = explode('/', trim(substr($src, strlen('/documentation/')), '/'));
+			return false;
+		}
+
+		if (strpos($src, '/' . $lang . '/') === 0)
+		{
+			$segments = explode('/', trim($src, '/'));
 		}
 		else if (strpos($src, '/') === 0)
 		{
-			// Absolute but not under our route (e.g. still /<lang>/...
-			// if rewrite_absolute_links() ran first, which it always
-			// does before this is called).
+			// Absolute URLs outside this language's build are left alone.
 			return false;
 		}
 		else

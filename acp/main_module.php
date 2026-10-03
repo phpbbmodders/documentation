@@ -76,6 +76,10 @@ class main_module
 			'phpbbmodders_documentation_lang_map'      => (string) $config['phpbbmodders_documentation_lang_map'],
 			'phpbbmodders_documentation_nav_label_map' => (string) $config['phpbbmodders_documentation_nav_label_map'],
 			'phpbbmodders_documentation_devdocs_nav_label_map' => (string) $config['phpbbmodders_documentation_devdocs_nav_label_map'],
+			'phpbbmodders_documentation_nav_icon' => $doc_helper->normalize_nav_icon(isset($config['phpbbmodders_documentation_nav_icon']) ? $config['phpbbmodders_documentation_nav_icon'] : 'fa-file-text-o'),
+			'phpbbmodders_documentation_devdocs_nav_icon' => $doc_helper->normalize_nav_icon(isset($config['phpbbmodders_documentation_devdocs_nav_icon']) ? $config['phpbbmodders_documentation_devdocs_nav_icon'] : 'fa-code'),
+			'phpbbmodders_documentation_nav_icon_enabled' => !empty($config['phpbbmodders_documentation_nav_icon_enabled']),
+			'phpbbmodders_documentation_devdocs_nav_icon_enabled' => !empty($config['phpbbmodders_documentation_devdocs_nav_icon_enabled']),
 		);
 
 		if ($cfg_array['phpbbmodders_documentation_fallback_lang'] === '')
@@ -105,6 +109,10 @@ class main_module
 			$cfg_array['phpbbmodders_documentation_lang_map'] = $request->variable('phpbbmodders_documentation_lang_map', '', true);
 			$cfg_array['phpbbmodders_documentation_nav_label_map'] = $request->variable('phpbbmodders_documentation_nav_label_map', '', true);
 			$cfg_array['phpbbmodders_documentation_devdocs_nav_label_map'] = $request->variable('phpbbmodders_documentation_devdocs_nav_label_map', '', true);
+			$cfg_array['phpbbmodders_documentation_nav_icon'] = $doc_helper->normalize_nav_icon($request->variable('phpbbmodders_documentation_nav_icon', ''));
+			$cfg_array['phpbbmodders_documentation_devdocs_nav_icon'] = $doc_helper->normalize_nav_icon($request->variable('phpbbmodders_documentation_devdocs_nav_icon', ''));
+			$cfg_array['phpbbmodders_documentation_nav_icon_enabled'] = $request->variable('phpbbmodders_documentation_nav_icon_enabled', false);
+			$cfg_array['phpbbmodders_documentation_devdocs_nav_icon_enabled'] = $request->variable('phpbbmodders_documentation_devdocs_nav_icon_enabled', false);
 
 			foreach ($cfg_array as $key => $value)
 			{
@@ -148,6 +156,10 @@ class main_module
 			'DOCUMENTATION_LANG_MAP'      => $cfg_array['phpbbmodders_documentation_lang_map'],
 			'DOCUMENTATION_NAV_LABEL_MAP' => $cfg_array['phpbbmodders_documentation_nav_label_map'],
 			'DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP' => $cfg_array['phpbbmodders_documentation_devdocs_nav_label_map'],
+			'DOCUMENTATION_NAV_ICON' => $cfg_array['phpbbmodders_documentation_nav_icon'],
+			'DOCUMENTATION_DEVDOCS_NAV_ICON' => $cfg_array['phpbbmodders_documentation_devdocs_nav_icon'],
+			'S_DOCUMENTATION_NAV_ICON_ENABLED' => $cfg_array['phpbbmodders_documentation_nav_icon_enabled'],
+			'S_DOCUMENTATION_DEVDOCS_NAV_ICON_ENABLED' => $cfg_array['phpbbmodders_documentation_devdocs_nav_icon_enabled'],
 
 			'U_ACTION' => $this->u_action,
 		));

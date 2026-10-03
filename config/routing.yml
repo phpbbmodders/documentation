@@ -1,3 +1,18 @@
+phpbbmodders_documentation_search:
+    path:             /documentation-search/{lang}
+    defaults:
+        _controller:  phpbbmodders.documentation.controller:search
+    requirements:
+        lang:         '[A-Za-z0-9_-]+'
+
+phpbbmodders_documentation_image:
+    path:             /documentation-image/{lang}/{path}
+    defaults:
+        _controller:  phpbbmodders.documentation.controller:image
+    requirements:
+        lang:         '[A-Za-z0-9_-]+'
+        path:         '.+'
+
 phpbbmodders_documentation_root:
     path:             /documentation
     defaults:

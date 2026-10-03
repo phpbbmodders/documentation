@@ -1,3 +1,5 @@
+{% INCLUDECSS '@phpbbmodders_documentation/documentation-tooltips.css' %}
+{% INCLUDEJS '@phpbbmodders_documentation/documentation-tooltips.js' %}
 {% INCLUDE 'overall_header.html' %}
 
 <a id="maincontent"></a>
@@ -35,7 +37,7 @@
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_fallback_lang">{{ lang('ACP_DOCUMENTATION_FALLBACK_LANG') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_FALLBACK_LANG_EXPLAIN') }}</span></dt>
-			<dd><input type="text" id="phpbbmodders_documentation_fallback_lang" name="phpbbmodders_documentation_fallback_lang" value="{{ DOCUMENTATION_FALLBACK_LANG }}" class="tiny"></dd>
+			<dd><input type="text" id="phpbbmodders_documentation_fallback_lang" name="phpbbmodders_documentation_fallback_lang" value="{{ DOCUMENTATION_FALLBACK_LANG }}" class="tiny" data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_FALLBACK_LANG_EXPLAIN')|e }}"></dd>
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_enabled">{{ lang('ACP_DOCUMENTATION_ENABLED') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_ENABLED_EXPLAIN') }}</span></dt>
@@ -54,7 +56,15 @@
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_nav_label_map">{{ lang('ACP_DOCUMENTATION_NAV_LABEL_MAP') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_NAV_LABEL_MAP_EXPLAIN') }}</span></dt>
-			<dd><textarea id="phpbbmodders_documentation_nav_label_map" name="phpbbmodders_documentation_nav_label_map" rows="4" cols="40">{{ DOCUMENTATION_NAV_LABEL_MAP }}</textarea></dd>
+			<dd><textarea id="phpbbmodders_documentation_nav_label_map" name="phpbbmodders_documentation_nav_label_map" rows="4" cols="40" data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_NAV_LABEL_MAP_EXPLAIN')|e }}">{{ DOCUMENTATION_NAV_LABEL_MAP }}</textarea></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_nav_icon_enabled">{{ lang('ACP_DOCUMENTATION_NAV_ICON_ENABLED') ~ lang('COLON') }}</label></dt>
+			<dd><input type="checkbox" id="phpbbmodders_documentation_nav_icon_enabled" name="phpbbmodders_documentation_nav_icon_enabled" value="1"{% if S_DOCUMENTATION_NAV_ICON_ENABLED %} checked="checked"{% endif %}></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_nav_icon">{{ lang('ACP_DOCUMENTATION_NAV_ICON') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_NAV_ICON_EXPLAIN') }}</span></dt>
+			<dd><input type="text" id="phpbbmodders_documentation_nav_icon" name="phpbbmodders_documentation_nav_icon" value="{{ DOCUMENTATION_NAV_ICON }}" class="medium" maxlength="64" pattern="fa-[a-z0-9]+(-[a-z0-9]+)*" data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_NAV_ICON_EXPLAIN')|e }}"></dd>
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_devdocs_nav_link">{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LINK') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LINK_EXPLAIN') }}</span></dt>
@@ -63,7 +73,15 @@
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_devdocs_nav_label_map">{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP_EXPLAIN') }}</span></dt>
-			<dd><textarea id="phpbbmodders_documentation_devdocs_nav_label_map" name="phpbbmodders_documentation_devdocs_nav_label_map" rows="4" cols="40">{{ DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP }}</textarea></dd>
+			<dd><textarea id="phpbbmodders_documentation_devdocs_nav_label_map" name="phpbbmodders_documentation_devdocs_nav_label_map" rows="4" cols="40" data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP_EXPLAIN')|e }}">{{ DOCUMENTATION_DEVDOCS_NAV_LABEL_MAP }}</textarea></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_devdocs_nav_icon_enabled">{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_ICON_ENABLED') ~ lang('COLON') }}</label></dt>
+			<dd><input type="checkbox" id="phpbbmodders_documentation_devdocs_nav_icon_enabled" name="phpbbmodders_documentation_devdocs_nav_icon_enabled" value="1"{% if S_DOCUMENTATION_DEVDOCS_NAV_ICON_ENABLED %} checked="checked"{% endif %}></dd>
+		</dl>
+		<dl>
+			<dt><label for="phpbbmodders_documentation_devdocs_nav_icon">{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_ICON') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_ICON_EXPLAIN') }}</span></dt>
+			<dd><input type="text" id="phpbbmodders_documentation_devdocs_nav_icon" name="phpbbmodders_documentation_devdocs_nav_icon" value="{{ DOCUMENTATION_DEVDOCS_NAV_ICON }}" class="medium" maxlength="64" pattern="fa-[a-z0-9]+(-[a-z0-9]+)*" data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_DEVDOCS_NAV_ICON_EXPLAIN')|e }}"></dd>
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_manual_switch">{{ lang('ACP_DOCUMENTATION_MANUAL_SWITCH') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_MANUAL_SWITCH_EXPLAIN') }}</span></dt>
@@ -77,7 +95,7 @@
 		</dl>
 		<dl>
 			<dt><label for="phpbbmodders_documentation_lang_map">{{ lang('ACP_DOCUMENTATION_LANG_MAP') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_LANG_MAP_EXPLAIN') }}</span></dt>
-			<dd><textarea id="phpbbmodders_documentation_lang_map" name="phpbbmodders_documentation_lang_map" rows="4" cols="40">{{ DOCUMENTATION_LANG_MAP }}</textarea></dd>
+			<dd><textarea id="phpbbmodders_documentation_lang_map" name="phpbbmodders_documentation_lang_map" rows="4" cols="40" data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_LANG_MAP_EXPLAIN')|e }}">{{ DOCUMENTATION_LANG_MAP }}</textarea></dd>
 		</dl>
 	</fieldset>
 
@@ -111,7 +129,7 @@
 <form id="acp_documentation_resync" method="post" action="{{ U_ACTION }}">
 	<fieldset class="submit-buttons">
 		<p>{{ lang('ACP_DOCUMENTATION_RESYNC_EXPLAIN') }}</p>
-		<input class="button1" type="submit" id="resync" name="resync" value="{{ lang('ACP_DOCUMENTATION_RESYNC') }}">
+		<input class="button1" type="submit" id="resync" name="resync" value="{{ lang('ACP_DOCUMENTATION_RESYNC') }}" data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_RESYNC_EXPLAIN')|e }}">
 		{{ S_FORM_TOKEN }}
 	</fieldset>
 </form>

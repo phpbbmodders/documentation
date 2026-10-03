@@ -1,0 +1,36 @@
+.documentation-tooltip-term {
+	cursor: help;
+	text-decoration: underline dotted;
+	text-underline-offset: 3px;
+}
+
+.documentation-tooltip-image {
+	cursor: help;
+}
+
+.documentation-tooltip-term:focus-visible,
+.documentation-tooltip-image:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.documentation-tooltip-popup {
+	position: fixed;
+	z-index: 10000;
+	box-sizing: border-box;
+	width: max-content;
+	max-width: min(320px, calc(100vw - 24px));
+	padding: 8px 10px;
+	border: 1px solid #50545a;
+	border-radius: 4px;
+	background: #fff;
+	color: #25282c;
+	box-shadow: 0 2px 6px #0003;
+	font: 13px/1.5 Arial, sans-serif;
+	letter-spacing: 0;
+	overflow-wrap: anywhere;
+}
+
+.documentation-tooltip-popup[hidden] {
+	display: none;
+}

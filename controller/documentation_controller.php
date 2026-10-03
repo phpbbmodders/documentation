@@ -14,9 +14,11 @@ use phpbb\auth\auth;
 use phpbb\config\config;
 use phpbb\controller\helper as controller_helper;
 use phpbb\exception\http_exception;
+use phpbb\request\request_interface;
 use phpbb\template\template;
 use phpbb\user;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class documentation_controller
 {
@@ -44,7 +46,10 @@ class documentation_controller
 	/** @var string */
 	protected $php_ext;
 
-	public function __construct(auth $auth, config $config, controller_helper $controller_helper, template $template, user $user, documentation_helper $doc_helper, $phpbb_root_path, $php_ext)
+	/** @var request_interface */
+	protected $request;
+
+	public function __construct(auth $auth, config $config, controller_helper $controller_helper, template $template, user $user, documentation_helper $doc_helper, $phpbb_root_path, $php_ext, request_interface $request)
 	{
 		$this->auth = $auth;
 		$this->config = $config;
@@ -54,6 +59,7 @@ class documentation_controller
 		$this->doc_helper = $doc_helper;
 		$this->phpbb_root_path = $phpbb_root_path;
 		$this->php_ext = $php_ext;
+		$this->request = $request;
 	}
 
 	/**
@@ -106,18 +112,133 @@ class documentation_controller
 			return $this->access_denied_response();
 		}
 
-		$result = $this->doc_helper->resolve_and_load($lang, $path, $allowed_sections);
+		$content_lang = $lang;
+		if ($this->doc_helper->get_content_file($lang, $path) === false)
+		{
+			$content_lang = $this->doc_helper->get_fallback_language();
+			if ($content_lang === $lang || $this->doc_helper->get_content_file($content_lang, $path) === false)
+			{
+				throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
+			}
+			if (!$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $content_lang))
+			{
+				return $this->access_denied_response();
+			}
+			$allowed_sections = $this->allowed_sections($content_lang, $section);
+			if ($section === '' ? empty($allowed_sections) : !in_array($section, $allowed_sections, true))
+			{
+				return $this->access_denied_response();
+			}
+		}
+
+		// Do not let the loader substitute another language after authorization.
+		$result = $this->doc_helper->resolve_and_load($content_lang, $path, $allowed_sections, false);
 
 		if ($result === false)
 		{
 			throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
 		}
 
+		$result['used_fallback'] = $content_lang !== $lang;
 		$this->doc_helper->set_language_cookie($lang);
 
-		$this->assign_template_vars($lang, $result);
+		$this->assign_template_vars($lang, $result, $section);
 
 		return $this->controller_helper->render('documentation_body.html', $result['title']);
+	}
+
+	public function search($lang)
+	{
+		if (!(bool) $this->config['phpbbmodders_documentation_enabled'])
+		{
+			throw new http_exception(503, 'DOCUMENTATION_DISABLED');
+		}
+		if ($this->doc_helper->get_docs_root() === false)
+		{
+			throw new http_exception(503, 'DOCUMENTATION_NOT_BUILT');
+		}
+		if (!$this->doc_helper->is_known_language($lang))
+		{
+			throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
+		}
+		$scope = $this->request->variable('scope', '') === documentation_helper::DEVDOCS_SECTION
+			? documentation_helper::DEVDOCS_SECTION : '';
+		$sections = $this->allowed_sections($lang, $scope);
+		if (!$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $lang) || empty($sections))
+		{
+			return $this->access_denied_response();
+		}
+		$query = trim(htmlspecialchars_decode($this->request->variable('q', '', true), ENT_QUOTES));
+		$valid = mb_strlen($query) >= 2 && mb_strlen($query) <= 100;
+		$results = array();
+		if ($valid)
+		{
+			$results = $this->doc_helper->search_pages($lang, $query, $sections);
+			if ($results === false)
+			{
+				throw new http_exception(503, 'DOCUMENTATION_SEARCH_UNAVAILABLE');
+			}
+		}
+		$this->template->assign_vars(array(
+			'U_DOCUMENTATION_SEARCH' => $this->controller_helper->route('phpbbmodders_documentation_search', array('lang' => $lang)),
+			'U_DOCUMENTATION_SEARCH_BACK' => $this->route_for($lang, $scope),
+			'DOCUMENTATION_SEARCH_SCOPE' => $scope,
+			'DOCUMENTATION_SEARCH_QUERY' => mb_substr($query, 0, 100),
+			'S_DOCUMENTATION_SEARCH_VALID' => $valid,
+			'S_DOCUMENTATION_SEARCH_RESULTS' => !empty($results),
+		));
+		foreach ($results as $result)
+		{
+			$this->template->assign_block_vars('documentation_search_result', array(
+				'TITLE' => $result['title'], 'EXCERPT' => $result['excerpt'], 'U_PAGE' => $result['url'],
+			));
+		}
+		$response = $this->controller_helper->render('documentation_search.html', $this->user->lang('DOCUMENTATION_SEARCH'));
+		$response->headers->set('Cache-Control', 'private, no-store');
+		return $response;
+	}
+
+	public function image($lang, $path)
+	{
+		if (!(bool) $this->config['phpbbmodders_documentation_enabled'])
+		{
+			throw new http_exception(503, 'DOCUMENTATION_DISABLED');
+		}
+		if ($this->doc_helper->get_docs_root() === false)
+		{
+			throw new http_exception(503, 'DOCUMENTATION_NOT_BUILT');
+		}
+
+		$page = $this->request->variable('page', '');
+		$page_lang = $this->request->variable('page_lang', (string) $lang);
+		if (!$this->doc_helper->is_known_language($lang) || !$this->doc_helper->is_known_language($page_lang))
+		{
+			throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
+		}
+		if (!$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $lang)
+			|| !$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $page_lang))
+		{
+			throw new http_exception(403, 'DOCUMENTATION_ACCESS_DENIED');
+		}
+		$section = $this->doc_helper->get_section($page);
+		$allowed_sections = $this->allowed_sections($page_lang, $section);
+		if ($section === '' ? empty($allowed_sections) : !in_array($section, $allowed_sections, true))
+		{
+			throw new http_exception(403, 'DOCUMENTATION_ACCESS_DENIED');
+		}
+
+		$file = $this->doc_helper->get_referenced_image_file($page_lang, $page, $lang, $path);
+		$info = $file !== false ? @getimagesize($file) : false;
+		if ($info === false || !in_array($info['mime'], array('image/png', 'image/gif', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/x-icon'), true))
+		{
+			throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
+		}
+
+		return new BinaryFileResponse($file, 200, array(
+			'Content-Type' => $info['mime'],
+			'X-Content-Type-Options' => 'nosniff',
+			'Cache-Control' => 'private, no-store',
+		), false);
 	}
 
 	/**
@@ -194,7 +315,7 @@ class documentation_controller
 	 * @param array $result From documentation_helper::resolve_and_load().
 	 * @return void
 	 */
-	protected function assign_template_vars($lang, array $result)
+	protected function assign_template_vars($lang, array $result, $section = '')
 	{
 		$this->template->assign_vars(array(
 			'DOCUMENTATION_TITLE'           => $result['title'],
@@ -203,6 +324,8 @@ class documentation_controller
 			'DOCUMENTATION_ARTICLE'         => $result['article_html'],
 			'S_DOCUMENTATION_USED_FALLBACK' => $result['used_fallback'],
 			'S_DOCUMENTATION_MANUAL_SWITCH' => (bool) $this->config['phpbbmodders_documentation_manual_switch'],
+			'U_DOCUMENTATION_SEARCH' => $this->controller_helper->route('phpbbmodders_documentation_search', array('lang' => $lang)),
+			'DOCUMENTATION_SEARCH_SCOPE' => $this->doc_helper->is_devdocs_section($section) ? documentation_helper::DEVDOCS_SECTION : '',
 		));
 
 		$labels = $this->doc_helper->get_language_labels();

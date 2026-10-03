@@ -1,10 +1,10 @@
 {% if S_DOCUMENTATION_NAV_VISIBLE %}
 	<li>
-		<a href="{{ U_DOCUMENTATION }}">{{ DOCUMENTATION_NAV_TEXT }}</a>
+		<a href="{{ U_DOCUMENTATION }}">{% if DOCUMENTATION_NAV_ICON %}<i class="icon {{ DOCUMENTATION_NAV_ICON }} fa-fw" aria-hidden="true"></i> {% endif %}<span>{{ DOCUMENTATION_NAV_TEXT }}</span></a>
 	</li>
 {% endif %}
 {% if S_DOCUMENTATION_DEVDOCS_NAV_VISIBLE %}
 	<li>
-		<a href="{{ U_DOCUMENTATION_DEVDOCS }}">{{ DOCUMENTATION_DEVDOCS_NAV_TEXT }}</a>
+		<a href="{{ U_DOCUMENTATION_DEVDOCS }}">{% if DOCUMENTATION_DEVDOCS_NAV_ICON %}<i class="icon {{ DOCUMENTATION_DEVDOCS_NAV_ICON }} fa-fw" aria-hidden="true"></i> {% endif %}<span>{{ DOCUMENTATION_DEVDOCS_NAV_TEXT }}</span></a>
 	</li>
 {% endif %}

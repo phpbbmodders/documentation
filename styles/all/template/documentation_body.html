@@ -1,3 +1,6 @@
+{% INCLUDECSS '@phpbbmodders_documentation/documentation.css' %}
+{% INCLUDECSS '@phpbbmodders_documentation/documentation-tooltips.css' %}
+
 {% include 'overall_header.html' %}
 
 {% if S_DOCUMENTATION_USED_FALLBACK %}
@@ -23,6 +26,7 @@
 
 <div class="documentation-grid">
 	<aside class="documentation-sidebar">
+		{% include '@phpbbmodders_documentation/documentation_search_form.html' %}
 		{{ DOCUMENTATION_SIDEBAR }}
 	</aside>
 	<main class="documentation-main">
@@ -33,5 +37,6 @@
 </div>
 
 {% INCLUDEJS 'js/documentation.js' %}
+{% INCLUDEJS 'js/documentation-tooltips.js' %}
 
 {% include 'overall_footer.html' %}

@@ -60,6 +60,13 @@ $lang = array_merge($lang, array(
 	'ACP_DOCUMENTATION_LANG_MAP'         => 'Language code overrides',
 	'ACP_DOCUMENTATION_LANG_MAP_EXPLAIN' => 'phpBB and the docs build don’t always use the same language codes (e.g. phpBB’s “no” vs a docs build keyed “nb”). One override per line, as phpbb_code=docs_code. Most boards won’t need this — matching codes (en, da, de…) and regional variants (pt_br falling back to pt) are handled automatically.',
 
+	'ACP_DOCUMENTATION_NAV_ICON_ENABLED' => 'Show Documentation icon',
+	'ACP_DOCUMENTATION_NAV_ICON' => 'Documentation icon',
+	'ACP_DOCUMENTATION_NAV_ICON_EXPLAIN' => 'Optional Font Awesome icon name supported by your board style, such as fa-file-text-o. Leave blank for no icon.',
+	'ACP_DOCUMENTATION_DEVDOCS_NAV_ICON_ENABLED' => 'Show Developer Documentation icon',
+	'ACP_DOCUMENTATION_DEVDOCS_NAV_ICON' => 'Developer Documentation icon',
+	'ACP_DOCUMENTATION_DEVDOCS_NAV_ICON_EXPLAIN' => 'Optional Font Awesome icon name, such as fa-code. Used only with separate navigation links. Leave blank for no icon.',
+
 	'ACP_DOCUMENTATION_DETECTED'       => 'Detected content',
 	'ACP_DOCUMENTATION_LANG_CODE'      => 'Language',
 	'ACP_DOCUMENTATION_LANG_SECTIONS'  => 'Sections',
