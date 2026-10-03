@@ -16,6 +16,13 @@ these files directly off disk regardless of any of the below — a deny
 rule only blocks browser/HTTP access to the directory, never phpBB's own
 server-side reads.
 
+Article images are served through phpBB's `/documentation-image/{lang}/{path}`
+route, not through direct access to `docs-build/`. The route checks the
+source page's language and section permissions, the image language's
+permission, and that the article references the requested image. Only
+supported raster images are served; SVG files are not served by this route.
+Keep the directory's deny rule in place when enabling images.
+
 The `.htaccess` only helps on **Apache with `AllowOverride` enabled for
 this path**, and on **LiteSpeed/OpenLiteSpeed**, which reads `.htaccess`
 natively for Apache compatibility — nothing further needed on either.

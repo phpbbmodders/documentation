@@ -21,7 +21,7 @@ class main_info
 				'settings' => array(
 					'title' => 'ACP_DOCUMENTATION_SETTINGS',
 					'auth'  => 'ext_phpbbmodders/documentation && acl_a_board',
-					'cat'   => array('ACP_CAT_DOT_MODS'),
+					'cat'   => array('ACP_DOCUMENTATION_TITLE'),
 				),
 			),
 		);

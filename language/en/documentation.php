@@ -27,6 +27,11 @@ $lang = array_merge($lang, array(
 	'DOCUMENTATION_PAGE_NOT_FOUND'         => 'That documentation page couldn’t be found.',
 	'DOCUMENTATION_NOT_BUILT'              => 'The documentation hasn’t been built yet. Please check back later.',
 	'DOCUMENTATION_DISABLED'               => 'Documentation is currently disabled.',
+	'DOCUMENTATION_SEARCH'                 => 'Search documentation',
+	'DOCUMENTATION_SEARCH_BACK'            => 'Back to documentation',
+	'DOCUMENTATION_SEARCH_LENGTH'          => 'Enter between 2 and 100 characters.',
+	'DOCUMENTATION_SEARCH_NO_RESULTS'      => 'No matching documentation pages found.',
+	'DOCUMENTATION_SEARCH_UNAVAILABLE'     => 'Documentation search is unavailable. Rebuild the documentation to generate its search index.',
 
 	'NOTIFICATION_DOCUMENTATION_NO_BUILD'      => 'No documentation build was found at the configured path.',
 	'NOTIFICATION_TYPE_DOCUMENTATION_NO_BUILD' => 'Documentation build missing',

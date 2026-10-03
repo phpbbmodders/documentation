@@ -1,0 +1,8 @@
+<form class="documentation-search-form" action="{{ U_DOCUMENTATION_SEARCH|e }}" method="get">
+	<label for="documentation-search-query">{{ lang('DOCUMENTATION_SEARCH') }}</label>
+	<div class="documentation-search-controls">
+		<input class="inputbox" id="documentation-search-query" type="search" name="q" value="{{ DOCUMENTATION_SEARCH_QUERY|e }}" minlength="2" maxlength="100" required>
+		<input type="hidden" name="scope" value="{{ DOCUMENTATION_SEARCH_SCOPE|e }}">
+		<button class="button" type="submit" title="{{ lang('SEARCH') }}" aria-label="{{ lang('SEARCH') }}"><i class="icon fa-search fa-fw" aria-hidden="true"></i></button>
+	</div>
+</form>

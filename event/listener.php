@@ -148,9 +148,11 @@ class listener implements EventSubscriberInterface
 			'S_DOCUMENTATION_NAV_VISIBLE'          => false,
 			'U_DOCUMENTATION'                      => '',
 			'DOCUMENTATION_NAV_TEXT'               => '',
+			'DOCUMENTATION_NAV_ICON'               => '',
 			'S_DOCUMENTATION_DEVDOCS_NAV_VISIBLE'  => false,
 			'U_DOCUMENTATION_DEVDOCS'              => '',
 			'DOCUMENTATION_DEVDOCS_NAV_TEXT'       => '',
+			'DOCUMENTATION_DEVDOCS_NAV_ICON'       => '',
 		);
 
 		if (!(bool) $this->config['phpbbmodders_documentation_enabled'] || $this->doc_helper->get_docs_root() === false)
@@ -160,30 +162,23 @@ class listener implements EventSubscriberInterface
 			return;
 		}
 
-		if (!(bool) $this->config['phpbbmodders_documentation_split_nav_links'])
-		{
-			$visible = (bool) $this->config['phpbbmodders_documentation_nav_link'] && $this->has_any_access();
+		$split = (bool) $this->config['phpbbmodders_documentation_split_nav_links'];
+		$docs_accessible = $this->has_any_access($split ? false : null);
+		$devdocs_accessible = $this->has_any_access(true);
+		$docs_visible = (bool) $this->config['phpbbmodders_documentation_nav_link'] && $docs_accessible;
+		$devdocs_visible = $split && (bool) $this->config['phpbbmodders_documentation_devdocs_nav_link'] && $devdocs_accessible;
 
-			$this->template->assign_vars(array_merge($blank, array(
-				'S_DOCUMENTATION_NAV_VISIBLE' => $visible,
-				'U_DOCUMENTATION'             => $visible ? $this->controller_helper->route('phpbbmodders_documentation_root') : '',
-				'DOCUMENTATION_NAV_TEXT'      => $visible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION') : '',
-			)));
-
-			return;
-		}
-
-		$docs_visible = (bool) $this->config['phpbbmodders_documentation_nav_link'] && $this->has_any_access(false);
-		$devdocs_visible = (bool) $this->config['phpbbmodders_documentation_devdocs_nav_link'] && $this->has_any_access(true);
-
+		// External menus can use these URLs even when the built-in links are hidden.
 		$this->template->assign_vars(array(
 			'S_DOCUMENTATION_NAV_VISIBLE'         => $docs_visible,
-			'U_DOCUMENTATION'                     => $docs_visible ? $this->controller_helper->route('phpbbmodders_documentation_root') : '',
-			'DOCUMENTATION_NAV_TEXT'              => $docs_visible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION') : '',
+			'U_DOCUMENTATION'                     => $docs_accessible ? $this->controller_helper->route('phpbbmodders_documentation_root') : '',
+			'DOCUMENTATION_NAV_TEXT'              => $docs_accessible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION') : '',
+			'DOCUMENTATION_NAV_ICON'              => $docs_accessible ? $this->doc_helper->get_nav_icon('phpbbmodders_documentation_nav_icon') : '',
 
 			'S_DOCUMENTATION_DEVDOCS_NAV_VISIBLE' => $devdocs_visible,
-			'U_DOCUMENTATION_DEVDOCS'             => $devdocs_visible ? $this->devdocs_url() : '',
-			'DOCUMENTATION_DEVDOCS_NAV_TEXT'      => $devdocs_visible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_devdocs_nav_label_map', 'DOCUMENTATION_DEV') : '',
+			'U_DOCUMENTATION_DEVDOCS'             => $devdocs_accessible ? $this->devdocs_url() : '',
+			'DOCUMENTATION_DEVDOCS_NAV_TEXT'      => $devdocs_accessible ? $this->doc_helper->get_nav_label('phpbbmodders_documentation_devdocs_nav_label_map', 'DOCUMENTATION_DEV') : '',
+			'DOCUMENTATION_DEVDOCS_NAV_ICON'      => $devdocs_accessible ? $this->doc_helper->get_nav_icon('phpbbmodders_documentation_devdocs_nav_icon') : '',
 		));
 	}
 

@@ -11,6 +11,7 @@
 namespace phpbbmodders\documentation\tests\controller;
 
 use phpbb\config\config;
+use phpbb\controller\helper as controller_helper;
 use phpbb\language\language;
 use phpbb\request\request_interface;
 use phpbb\user;
@@ -144,8 +145,137 @@ class documentation_helper_test extends TestCase
 			$this->createMock(language::class),
 			$this->get_request($cookie_lang, $accept_language),
 			$this->get_user($is_registered, $user_lang),
-			''
+			'',
+			$this->get_controller_helper()
 		);
+	}
+
+	public function test_search_only_returns_existing_allowed_pages_and_matches_every_word()
+	{
+		$this->make_page('en', 'private');
+		file_put_contents($this->docs_root . '/en/search-index.json', json_encode(array(
+			array('path' => 'quickstart/quick_installation', 'title' => 'Installation', 'text' => 'Configure the DATABASE connection safely.'),
+			array('path' => 'private', 'title' => 'Private database connection', 'text' => 'Restricted excerpt'),
+			array('path' => 'quickstart/missing', 'title' => 'Database connection', 'text' => 'Stale entry'),
+			array('path' => 'quickstart/../../../escaped', 'title' => 'Database connection', 'text' => 'Outside build'),
+		)));
+		$helper = $this->get_helper();
+		$results = $helper->search_pages('en', 'database connection', array('quickstart'));
+		$this->assertCount(1, $results);
+		$this->assertSame('Installation', $results[0]['title']);
+		$this->assertStringContainsString('DATABASE connection', $results[0]['excerpt']);
+		$this->assertSame('/forum/app.php/documentation/en/quickstart/quick_installation?sid=test-session', $results[0]['url']);
+		$this->assertSame(array(), $helper->search_pages('en', 'database nonexistent', array('quickstart')));
+		$this->assertSame(array(), $helper->search_pages('en', 'database', array()));
+	}
+
+	public function test_search_prefers_title_matches_and_supports_unicode()
+	{
+		file_put_contents($this->docs_root . '/en/search-index.json', json_encode(array(
+			array('path' => 'quickstart', 'title' => 'Overview', 'text' => 'Ændring in content'),
+			array('path' => 'quickstart/quick_installation', 'title' => 'Ændring', 'text' => 'Instructions'),
+		)));
+		$results = $this->get_helper()->search_pages('en', 'ændring', array('quickstart'));
+		$this->assertCount(2, $results);
+		$this->assertSame('Ændring', $results[0]['title']);
+	}
+
+	public function test_search_decodes_entities_before_matching_and_excerpt_generation()
+	{
+		file_put_contents($this->docs_root . '/en/search-index.json', json_encode(array(
+			array('path' => 'quickstart', 'title' => 'User&rsquo;s guide',
+				'text' => '&#34;homepage&#34;: &#34;https://github.com/phpbb/phpbb&#34; &lt;script&gt; &amp; code'),
+		)));
+		$results = $this->get_helper()->search_pages('en', '"homepage"', array('quickstart'));
+		$this->assertCount(1, $results);
+		$this->assertSame('User’s guide', $results[0]['title']);
+		$this->assertSame('"homepage": "https://github.com/phpbb/phpbb" <script> & code', $results[0]['excerpt']);
+	}
+
+	public function test_search_rejects_missing_malformed_or_external_index()
+	{
+		$helper = $this->get_helper();
+		$this->assertFalse($helper->search_pages('en', 'database', array('quickstart')));
+		file_put_contents($this->docs_root . '/en/search-index.json', 'not JSON');
+		$this->assertFalse($helper->search_pages('en', 'database', array('quickstart')));
+		unlink($this->docs_root . '/en/search-index.json');
+		file_put_contents($this->docs_root . '/outside.json', '[]');
+		symlink($this->docs_root . '/outside.json', $this->docs_root . '/en/search-index.json');
+		$this->assertFalse($helper->search_pages('en', 'database', array('quickstart')));
+	}
+
+	protected function get_controller_helper($base = '/forum/app.php')
+	{
+		$helper = $this->createMock(controller_helper::class);
+		$helper->method('route')->willReturnCallback(function ($route, array $params) use ($base) {
+			$url = $base . ($route === 'phpbbmodders_documentation_image' ? '/documentation-image/' : '/documentation/') . $params['lang'];
+			if ($route === 'phpbbmodders_documentation_page' || $route === 'phpbbmodders_documentation_image')
+			{
+				$url .= '/' . $params['path'];
+			}
+			unset($params['lang'], $params['path']);
+			return $url . '?' . http_build_query(array_merge(array('sid' => 'test-session'), $params));
+		});
+		return $helper;
+	}
+
+	/** @dataProvider route_base_provider */
+	public function test_imported_links_use_routes_and_keep_sidebar_permissions($base)
+	{
+		file_put_contents($this->docs_root . '/en/quickstart/index.html', '<html><body>
+			<div class="docs-nav-panel">
+				<section class="docs-tree-section"><a href="/en/quickstart/">Allowed</a></section>
+				<section class="docs-tree-section"><a href="/en/development/">Denied</a></section>
+			</div>
+			<div class="utility-bar"><a href="/da/quickstart/">Danish</a><a href="/en">Home</a></div>
+			<article class="docs-article">
+				<a href="/en/quickstart/?q=one&amp;page=2#install">Article</a>
+				<a href="https://example.org/en/quickstart/">External</a>
+				<a href="../other/">Relative</a>
+			</article></body></html>');
+		$helper = new documentation_helper($this->get_config(), $this->createMock(language::class),
+			$this->get_request(), $this->get_user(), '', $this->get_controller_helper($base));
+		$result = $helper->resolve_and_load('en', 'quickstart', array('quickstart'));
+		$this->assertStringContainsString($base . '/documentation/en/quickstart/?sid=test-session', $result['sidebar_html']);
+		$this->assertStringNotContainsString('Denied', $result['sidebar_html']);
+		$this->assertStringContainsString($base . '/documentation/da/quickstart/?sid=test-session', $result['breadcrumb_html']);
+		$this->assertStringContainsString($base . '/documentation/en?sid=test-session', $result['breadcrumb_html']);
+		$this->assertStringContainsString($base . '/documentation/en/quickstart/?sid=test-session&amp;q=one&amp;page=2#install', $result['article_html']);
+		$this->assertStringContainsString('href="https://example.org/en/quickstart/"', $result['article_html']);
+		$this->assertStringContainsString('href="../other/"', $result['article_html']);
+	}
+
+	public static function route_base_provider()
+	{
+		return array(array('/app.php'), array('/forum/app.php'), array('/forum'), array(''));
+	}
+
+	public function test_absolute_image_fallback_is_resolved_before_route_rewriting()
+	{
+		mkdir($this->docs_root . '/en/images');
+		file_put_contents($this->docs_root . '/en/images/fallback.png', 'image fixture');
+		file_put_contents($this->docs_root . '/da/quickstart/index.html', '<html><body>
+			<article class="docs-article"><img src="/da/images/fallback.png"></article>
+			</body></html>');
+		$result = $this->get_helper()->resolve_and_load('da', 'quickstart');
+		$this->assertStringContainsString('src="/forum/app.php/documentation-image/en/images/fallback.png?sid=test-session&amp;page_lang=da&amp;page=quickstart"', $result['article_html']);
+		$this->assertStringNotContainsString('documentation-image-missing', $result['article_html']);
+	}
+
+	public function test_missing_image_preserves_its_alt_description()
+	{
+		file_put_contents($this->docs_root . '/en/quickstart/index.html', '<html><body>
+			<article class="docs-article"><img src="/en/images/missing.png" alt="A &quot;quoted&quot; &lt;diagram&gt;">
+			<img src="/en/images/decorative.png" alt=""></article></body></html>');
+		$result = $this->get_helper()->resolve_and_load('en', 'quickstart');
+		$dom = new \DOMDocument();
+		@$dom->loadHTML($result['article_html']);
+		$notices = (new \DOMXPath($dom))->query('//span[@class="documentation-image-missing"]');
+		$this->assertCount(2, $notices);
+		$this->assertSame('A "quoted" <diagram>', $notices->item(0)->getAttribute('data-doc-tooltip'));
+		$this->assertSame('0', $notices->item(0)->getAttribute('tabindex'));
+		$this->assertFalse($notices->item(1)->hasAttribute('data-doc-tooltip'));
+		$this->assertFalse($notices->item(1)->hasAttribute('tabindex'));
 	}
 
 	public function test_get_available_languages_reflects_the_build()
@@ -153,6 +283,20 @@ class documentation_helper_test extends TestCase
 		$helper = $this->get_helper();
 
 		$this->assertSame(array('da', 'en'), $helper->get_available_languages());
+	}
+
+	public function test_imported_language_switcher_is_removed_but_labels_remain_available()
+	{
+		file_put_contents($this->docs_root . '/da/index.html', '<html><body>
+			<div class="utility-bar"><a href="/da/">Documentation home</a>
+			<div class="language-switcher"><a href="/da/" lang="da">Dansk</a><a href="/en/" lang="en">English</a></div></div>
+			<article class="docs-article">Article</article></body></html>');
+		$helper = $this->get_helper();
+		$result = $helper->resolve_and_load('da', '');
+		$this->assertStringContainsString('Documentation home', $result['breadcrumb_html']);
+		$this->assertStringNotContainsString('language-switcher', $result['breadcrumb_html']);
+		$this->assertStringNotContainsString('English', $result['breadcrumb_html']);
+		$this->assertSame(array('da' => 'Dansk', 'en' => 'English'), $helper->get_language_labels());
 	}
 
 	public function test_get_docs_root_treats_an_existing_but_empty_directory_as_not_found()
@@ -174,7 +318,8 @@ class documentation_helper_test extends TestCase
 				$this->createMock(language::class),
 				$this->get_request(),
 				$this->get_user(),
-				''
+				'',
+				$this->get_controller_helper()
 			);
 
 			$this->assertFalse($helper->get_docs_root());
@@ -271,6 +416,20 @@ class documentation_helper_test extends TestCase
 		$this->assertFalse($helper->resolve_and_load('da', 'nowhere'));
 	}
 
+	public function test_loader_can_disable_implicit_fallback_after_authorization()
+	{
+		$this->assertFalse($this->get_helper()->resolve_and_load('da', 'quickstart/quick_installation', array('quickstart'), false));
+	}
+
+	public function test_page_containment_rejects_cross_language_paths_and_symlinks()
+	{
+		$helper = $this->get_helper();
+		$this->assertFalse($helper->get_content_file('da', '../en/quickstart'));
+		symlink($this->docs_root . '/en/quickstart/quick_installation', $this->docs_root . '/da/quickstart/linked');
+		$this->assertFalse($helper->get_content_file('da', 'quickstart/linked'));
+		unlink($this->docs_root . '/da/quickstart/linked');
+	}
+
 	public function test_resolve_default_language_prefers_the_cookie()
 	{
 		$helper = $this->get_helper(array(), 'da', 'en-US,en;q=0.9', true, 'en');
@@ -336,7 +495,8 @@ class documentation_helper_test extends TestCase
 			$language,
 			$this->get_request(),
 			$this->get_user(true, 'da'),
-			''
+			'',
+			$this->get_controller_helper()
 		);
 
 		$this->assertSame('Dokumentation', $helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION'));
@@ -355,7 +515,8 @@ class documentation_helper_test extends TestCase
 			$language,
 			$this->get_request(),
 			$this->get_user(true, 'fr'),
-			''
+			'',
+			$this->get_controller_helper()
 		);
 
 		$this->assertSame('Developer Documentation', $helper->get_nav_label('phpbbmodders_documentation_devdocs_nav_label_map', 'DOCUMENTATION_DEV'));
@@ -371,10 +532,67 @@ class documentation_helper_test extends TestCase
 			$language,
 			$this->get_request(),
 			$this->get_user(true, 'en'),
-			''
+			'',
+			$this->get_controller_helper()
 		);
 
 		$this->assertSame('Documentation', $helper->get_nav_label('phpbbmodders_documentation_nav_label_map', 'DOCUMENTATION'));
+	}
+
+	/**
+	 * @dataProvider nav_icon_provider
+	 */
+	public function test_normalize_nav_icon_returns_one_safe_font_awesome_class($raw_icon, $expected)
+	{
+		$this->assertSame($expected, $this->get_helper()->normalize_nav_icon($raw_icon));
+	}
+
+	public static function nav_icon_provider()
+	{
+		return array(
+			array('fa-book', 'fa-book'),
+			array(' fa-code ', 'fa-code'),
+			array('fa-file-text-o', 'fa-file-text-o'),
+			array('', ''),
+			array('book', ''),
+			array('fa-book fa-fw', ''),
+			array('fa-" onclick="alert(1)', ''),
+			array("fa-book\nfa-code", ''),
+			array('fa-' . str_repeat('a', 62), ''),
+		);
+	}
+
+	public function test_get_nav_icon_is_off_by_default_even_when_default_icon_is_configured()
+	{
+		$helper = $this->get_helper(array(
+			'phpbbmodders_documentation_nav_icon' => 'fa-book',
+			'phpbbmodders_documentation_nav_icon_enabled' => 0,
+		));
+
+		$this->assertSame('', $helper->get_nav_icon('phpbbmodders_documentation_nav_icon'));
+	}
+
+	public function test_get_nav_icon_returns_configured_icon_only_when_enabled()
+	{
+		$helper = $this->get_helper(array(
+			'phpbbmodders_documentation_nav_icon' => 'fa-book',
+			'phpbbmodders_documentation_nav_icon_enabled' => 1,
+			'phpbbmodders_documentation_devdocs_nav_icon' => 'fa-code',
+			'phpbbmodders_documentation_devdocs_nav_icon_enabled' => 1,
+		));
+
+		$this->assertSame('fa-book', $helper->get_nav_icon('phpbbmodders_documentation_nav_icon'));
+		$this->assertSame('fa-code', $helper->get_nav_icon('phpbbmodders_documentation_devdocs_nav_icon'));
+	}
+
+	public function test_get_nav_icon_hides_invalid_enabled_config_values()
+	{
+		$helper = $this->get_helper(array(
+			'phpbbmodders_documentation_nav_icon' => 'fa-book fa-fw',
+			'phpbbmodders_documentation_nav_icon_enabled' => 1,
+		));
+
+		$this->assertSame('', $helper->get_nav_icon('phpbbmodders_documentation_nav_icon'));
 	}
 
 	public function test_resolve_default_language_uses_a_configured_override_when_no_broad_match_exists()
