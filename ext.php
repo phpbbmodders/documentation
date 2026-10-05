@@ -13,13 +13,46 @@ namespace phpbbmodders\documentation;
 class ext extends \phpbb\extension\base
 {
 	/**
-	 * Requires phpBB 3.3.0 or greater
+	 * Check whether the extension can be enabled.
+	 * The current phpBB version should meet or exceed
+	 * the minimum version required by this extension.
 	 *
-	 * @return bool
+	 * @return bool|array
+	 * @access public
 	 */
 	public function is_enableable()
 	{
-		return phpbb_version_compare(PHPBB_VERSION, '3.3.0', '>=');
+		$enableable = $this->check_phpbb_version() && $this->check_php_version();
+
+		if (!$enableable)
+		{
+			$language = $this->container->get('language');
+			$language->add_lang('install_documentation', 'phpbbmodders/documentation');
+
+			return $language->lang('DOCUMENTATION_NOT_ENABLEABLE');
+		}
+
+		return $enableable;
+	}
+
+	/**
+	 * Require phpBB 3.3.19
+	 *
+	 * @return bool
+	 */
+	public function check_phpbb_version()
+	{
+		return phpbb_version_compare(PHPBB_VERSION, '3.3.19', '>=');
+	}
+
+	/**
+	 * Require PHP 8.0
+	 *
+	 * @return bool
+	 */
+	public function check_php_version()
+	{
+		return PHP_VERSION_ID >= 80000;
 	}
 
 	/**
