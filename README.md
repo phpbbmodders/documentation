@@ -13,7 +13,7 @@ Shows the board's Hugo documentation site inside phpBB, styled with the active b
 
 ## Requirements
 
-- phpBB 3.3.0 or later
+- phpBB 3.3.19 or later
 - PHP 8.0 or later
 
 ## Installation
