@@ -51,24 +51,31 @@ Check the URL before rendering each external menu entry. The
 ## Documentation search
 
 **Search documentation** searches titles and page text in the selected language
-with [Pagefind](https://pagefind.app/), which runs in the browser and requires
-JavaScript. Results include highlighted excerpts and are limited to 50 pages.
-The sidebar **Filter** still filters titles only.
+with [Pagefind](https://pagefind.app/), which runs in the browser. Results
+include highlighted excerpts. The ACP's **Search results limit** sets how many
+are shown (10-200, default 50). The sidebar **Filter** still filters titles only.
 
-The phpbbdocs-hugo build writes one Pagefind bundle per language and section
-to `<lang>/<section>/pagefind/`. Rebuild with `phpbbdocs_hugo.sh` after
-changing content. A build without these bundles still serves pages, but search
-reports that it is unavailable.
+Visitors without JavaScript get server-side results instead: every word must
+match, title matches come first, and the same limit applies. The server also
+answers when a build has no Pagefind bundles. With JavaScript, the search form
+tells the server to skip its own search and leave it to Pagefind.
 
-The search page checks language and section permissions and gives the browser
-only the bundles for sections the user may read. Bundle files are served through
+The phpbbdocs-hugo build writes, for each language and top-level section, a
+Pagefind bundle to `<lang>/<section>/pagefind/` and a server-side index to
+`<lang>/<section>/search-index.json`. Rebuild with `phpbbdocs_hugo.sh` after
+changing content. A build with neither still serves pages, but search reports
+that it is unavailable.
+
+The search page checks language and section permissions, searches only the
+server-side indexes of sections the user may read, and gives the browser only
+those sections' bundles. Bundle files are served through
 `/documentation-search-bundle/{lang}/{section}/{path}`, which repeats those
 checks for every file. Index files named by content hash may stay in the
 browser's private cache for the ACP's **Search index cache time** (default 60
 minutes, 0 turns it off), so a user who loses access to a section can still
 search what they already downloaded until it expires. Separate navigation limits search to the current
 documentation side. Keep raw access to the build directory blocked, including
-its Pagefind bundles, as described in [docs/securing-docs-build.md](docs/securing-docs-build.md).
+its Pagefind bundles and search indexes, as described in [docs/securing-docs-build.md](docs/securing-docs-build.md).
 
 `styles/all/template/js/documentation-search.js` is a copy of phpbbdocs-hugo's
 `site/static/js/documentation-search.js`; keep the two in sync.

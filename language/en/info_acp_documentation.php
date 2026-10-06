@@ -41,6 +41,10 @@ $lang = array_merge($lang, array(
 	'ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES_EXPLAIN' => 'How long each visitor’s browser may keep the search index files it downloads, in minutes. Longer makes repeat searches faster, but after you remove someone’s access to a section, their browser can still search that section’s cached files until they expire. 0 turns caching off.',
 	'ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES_INVALID' => 'Search index cache time must be a whole number of minutes from 0 to %d.',
 
+	'ACP_DOCUMENTATION_SEARCH_MAX_RESULTS'         => 'Search results limit',
+	'ACP_DOCUMENTATION_SEARCH_MAX_RESULTS_EXPLAIN' => 'Most results a documentation search shows, from %1$d to %2$d. Each result loads its own excerpt, so a higher limit makes searches with many matches slower.',
+	'ACP_DOCUMENTATION_SEARCH_MAX_RESULTS_INVALID' => 'Search results limit must be a whole number from %1$d to %2$d.',
+
 	'ACP_DOCUMENTATION_NAV_LINK'         => 'Show “Documentation” in navigation bar',
 	'ACP_DOCUMENTATION_NAV_LINK_EXPLAIN' => 'Add a “Documentation” entry to the forum’s top navigation bar. Disabling this only hides the link — the documentation itself stays reachable at its URL for anyone with permission, so you can link it from your own site menu instead.',
 

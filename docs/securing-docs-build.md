@@ -22,8 +22,11 @@ Search bundles are served the same way, through
 own Pagefind bundle, and the route serves a file only when the user may read
 that language and section. Content-hashed index files may be cached
 privately by the browser for the ACP's **Search index cache time** (default 60
-minutes; 0 turns it off). Direct access to the build would expose every
-section's bundle, so the deny rule matters for search too.
+minutes; 0 turns it off). The server-side search indexes
+(`<lang>/<section>/search-index.json`) are never served; the search page reads
+the indexes of sections the user may read. Direct access to the build would
+expose every section's bundle and index, so the deny rule matters for search
+too.
 
 ## Trusting the build
 

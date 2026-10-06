@@ -8,9 +8,28 @@
 		data-doc-search-bundles="{{ DOCUMENTATION_SEARCH_BUNDLES|e }}"
 		data-doc-search-links="{{ DOCUMENTATION_SEARCH_LINKS|e }}"
 		data-doc-search-messages="{{ DOCUMENTATION_SEARCH_MESSAGES|e }}"
+		data-doc-search-max-results="{{ DOCUMENTATION_SEARCH_MAX_RESULTS|e }}"
 		data-doc-search-query="{{ DOCUMENTATION_SEARCH_QUERY|e }}">
+		{% if S_DOCUMENTATION_SEARCH_SERVER %}
+		{# Server-side results; documentation-search.js replaces them with Pagefind's when it can. #}
+		<div data-doc-search-fallback>
+			{% if not S_DOCUMENTATION_SEARCH_VALID %}
+			<p class="doc-search-status" role="status">{{ lang('DOCUMENTATION_SEARCH_LENGTH') }}</p>
+			{% elseif documentation_search_result|length %}
+			<ol class="doc-search-results">
+				{% for result in documentation_search_result %}
+				<li><h3><a href="{{ result.U_PAGE|e }}">{{ result.TITLE|e }}</a></h3><p>{{ result.EXCERPT|e }}</p></li>
+				{% endfor %}
+			</ol>
+			{% else %}
+			<p class="doc-search-status" role="status">{{ lang('DOCUMENTATION_SEARCH_NO_RESULTS') }}</p>
+			{% endif %}
+		</div>
+		{% else %}
 		<noscript><p>{{ lang('DOCUMENTATION_SEARCH_NEEDS_JS') }}</p></noscript>
+		{% endif %}
 	</div>
 </div>
+{% INCLUDEJS 'js/documentation.js' %}
 {% INCLUDEJS 'js/documentation-search.js' %}
 {% include 'overall_footer.html' %}

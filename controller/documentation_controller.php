@@ -26,6 +26,10 @@ class documentation_controller
 	/** Stands in for a page path in the page route given to the search script. */
 	const SEARCH_PATH_PLACEHOLDER = 'documentation-search-path';
 
+	/** Search query length limits, matching the search form's minlength/maxlength. */
+	const SEARCH_QUERY_MIN_LENGTH = 2;
+	const SEARCH_QUERY_MAX_LENGTH = 100;
+
 	/** Image types the image route serves. SVG is left out on purpose. */
 	const IMAGE_MIME_TYPES = array('image/png', 'image/gif', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/x-icon');
 
@@ -157,9 +161,13 @@ class documentation_controller
 	}
 
 	/**
-	 * Search page. Results come from Pagefind in the browser
-	 * (documentation-search.js); this only passes it the search bundles
-	 * of sections the user may read.
+	 * Search page. With JavaScript, results come from Pagefind in the
+	 * browser (documentation-search.js), which gets only the search
+	 * bundles of sections the user may read. Without JavaScript, or when
+	 * no section has a Pagefind bundle, the same sections' server-side
+	 * indexes are searched here instead. The search form sends js=1 when
+	 * its script runs, so the server search is skipped when Pagefind will
+	 * replace it anyway.
 	 *
 	 * @param string $lang
 	 * @return \Symfony\Component\HttpFoundation\Response
@@ -190,11 +198,24 @@ class documentation_controller
 		{
 			$bundles[] = $this->search_bundle_url($lang, $section);
 		}
-		if (empty($bundles))
+		$index_sections = $this->doc_helper->get_search_index_sections($lang, $sections);
+		if (empty($bundles) && empty($index_sections))
 		{
 			throw new http_exception(503, 'DOCUMENTATION_SEARCH_UNAVAILABLE');
 		}
 		$query = trim(htmlspecialchars_decode($this->request->variable('q', '', true), ENT_QUOTES));
+		$max_results = $this->doc_helper->get_search_max_results();
+		$server_search = !empty($index_sections) && ($this->request->variable('js', 0) !== 1 || empty($bundles));
+		$valid = mb_strlen($query) >= self::SEARCH_QUERY_MIN_LENGTH && mb_strlen($query) <= self::SEARCH_QUERY_MAX_LENGTH;
+		$results = ($server_search && $valid) ? $this->doc_helper->search_pages($lang, $query, $index_sections, $max_results) : array();
+		foreach ($results as $result)
+		{
+			$this->template->assign_block_vars('documentation_search_result', array(
+				'TITLE'   => $result['title'],
+				'EXCERPT' => $result['excerpt'],
+				'U_PAGE'  => $result['url'],
+			));
+		}
 		// Pagefind returns Hugo paths (/<lang>/<path>/); the search script
 		// swaps the placeholder in this page route for each <path>.
 		$page_template = $this->controller_helper->route('phpbbmodders_documentation_page',
@@ -203,8 +224,11 @@ class documentation_controller
 			'U_DOCUMENTATION_SEARCH' => $this->controller_helper->route('phpbbmodders_documentation_search', array('lang' => $lang)),
 			'U_DOCUMENTATION_SEARCH_BACK' => $this->route_for($lang, $scope),
 			'DOCUMENTATION_SEARCH_SCOPE' => $scope,
-			'DOCUMENTATION_SEARCH_QUERY' => mb_substr($query, 0, 100),
+			'DOCUMENTATION_SEARCH_QUERY' => mb_substr($query, 0, self::SEARCH_QUERY_MAX_LENGTH),
 			'DOCUMENTATION_SEARCH_BUNDLES' => json_encode($bundles),
+			'DOCUMENTATION_SEARCH_MAX_RESULTS' => $max_results,
+			'S_DOCUMENTATION_SEARCH_SERVER' => $server_search,
+			'S_DOCUMENTATION_SEARCH_VALID' => $valid,
 			'DOCUMENTATION_SEARCH_LINKS' => json_encode(array(
 				'prefix' => '/' . $lang . '/',
 				'template' => $page_template,
