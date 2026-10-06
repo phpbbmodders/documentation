@@ -23,6 +23,14 @@ permission, and that the article references the requested image. Only
 supported raster images are served; SVG files are not served by this route.
 Keep the directory's deny rule in place when enabling images.
 
+Search bundles are served the same way, through
+`/documentation-search-bundle/{lang}/{section}/{path}`. Each section has its
+own Pagefind bundle, and the route serves a file only when the user may read
+that language and section. Content-hashed index files may be cached
+privately by the browser for the ACP's **Search index cache time** (default 60
+minutes; 0 turns it off). Direct access to `docs-build/` would expose every
+section's bundle, so the deny rule matters for search too.
+
 The `.htaccess` only helps on **Apache with `AllowOverride` enabled for
 this path**, and on **LiteSpeed/OpenLiteSpeed**, which reads `.htaccess`
 natively for Apache compatibility — nothing further needed on either.

@@ -50,6 +50,10 @@
 				<label><input type="radio" class="radio" name="phpbbmodders_documentation_split_nav_links" value="0"{% if not S_DOCUMENTATION_SPLIT_NAV_LINKS %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>
 		</dl>
 		<dl>
+			<dt><label for="phpbbmodders_documentation_search_cache_minutes">{{ lang('ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES_EXPLAIN') }}</span></dt>
+			<dd><input type="number" id="phpbbmodders_documentation_search_cache_minutes" name="phpbbmodders_documentation_search_cache_minutes" value="{{ DOCUMENTATION_SEARCH_CACHE_MINUTES }}" min="0" max="{{ DOCUMENTATION_SEARCH_CACHE_MAX_MINUTES }}" step="1" class="tiny" required data-doc-tooltip="{{ lang('ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES_EXPLAIN')|e }}"> {{ lang('MINUTES') }}</dd>
+		</dl>
+		<dl>
 			<dt><label for="phpbbmodders_documentation_nav_link">{{ lang('ACP_DOCUMENTATION_NAV_LINK') ~ lang('COLON') }}</label><br><span>{{ lang('ACP_DOCUMENTATION_NAV_LINK_EXPLAIN') }}</span></dt>
 			<dd><label><input type="radio" class="radio" id="phpbbmodders_documentation_nav_link" name="phpbbmodders_documentation_nav_link" value="1"{% if S_DOCUMENTATION_NAV_LINK %} checked="checked"{% endif %}> {{ lang('ENABLED') }}</label>
 				<label><input type="radio" class="radio" name="phpbbmodders_documentation_nav_link" value="0"{% if not S_DOCUMENTATION_NAV_LINK %} checked="checked"{% endif %}> {{ lang('DISABLED') }}</label></dd>

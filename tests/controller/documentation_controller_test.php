@@ -27,13 +27,11 @@ class documentation_controller_test extends TestCase
 {
 	protected $root;
 	protected $assigned;
-	protected $search_results;
 
 	protected function setUp(): void
 	{
 		$this->root = sys_get_temp_dir() . '/documentation_controller_' . uniqid();
 		$this->assigned = array();
-		$this->search_results = array();
 		foreach (array('en' => array('', 'quickstart', 'quickstart/install', 'englishonly'), 'da' => array('', 'quickstart', 'danishonly')) as $lang => $pages)
 		{
 			foreach ($pages as $page)
@@ -80,6 +78,10 @@ class documentation_controller_test extends TestCase
 		$user->data = array('is_registered' => true);
 		$routes = $this->createMock(controller_helper::class);
 		$routes->method('route')->willReturnCallback(function ($name, $params) {
+			if ($name === 'phpbbmodders_documentation_search_bundle')
+			{
+				return '/app.php/documentation-search-bundle/' . $params['lang'] . '/' . $params['section'] . '/' . $params['path'] . '?sid=abc';
+			}
 			return '/app.php/documentation/' . $params['lang'] . '/' . (isset($params['path']) ? $params['path'] : '');
 		});
 		$routes->method('render')->willReturn(new Response('rendered'));
@@ -87,49 +89,52 @@ class documentation_controller_test extends TestCase
 		$template->method('assign_vars')->willReturnCallback(function ($vars) {
 			$this->assigned = $vars;
 		});
-		$template->method('assign_block_vars')->willReturnCallback(function ($name, $vars) {
-			if ($name === 'documentation_search_result')
-			{
-				$this->search_results[] = $vars;
-			}
-		});
 		$helper = $this->getMockBuilder(documentation_helper::class)
 			->setConstructorArgs(array($config, $this->createMock(language::class), $request, $user, '', $routes))
 			->onlyMethods(array('set_language_cookie'))->getMock();
 		return new documentation_controller($auth, $config, $routes, $template, $user, $helper, '', 'php', $request);
 	}
 
-	public function test_search_filters_private_pages_and_returns_private_response()
+	protected function make_bundle($lang, $section)
 	{
-		file_put_contents($this->root . '/en/search-index.json', json_encode(array(
-			array('path' => 'quickstart/install', 'title' => 'Installation', 'text' => 'Searchable database configuration'),
-			array('path' => 'englishonly', 'title' => 'Secret title', 'text' => 'Secret database configuration'),
-		)));
+		mkdir($this->root . '/' . $lang . '/' . $section . '/pagefind/fragment', 0777, true);
+		file_put_contents($this->root . '/' . $lang . '/' . $section . '/pagefind/pagefind.js', 'export {};');
+		file_put_contents($this->root . '/' . $lang . '/' . $section . '/pagefind/fragment/en_1.pf_fragment', 'fragment');
+	}
+
+	public function test_search_passes_only_allowed_section_bundles_and_returns_private_response()
+	{
+		$this->make_bundle('en', 'quickstart');
+		$this->make_bundle('en', 'englishonly');
 		$response = $this->get_controller(array('u_phpbbmodders_documentation_englishonly'), 'database')->search('en');
 		$this->assertSame(200, $response->getStatusCode());
 		$this->assertTrue($response->headers->hasCacheControlDirective('private'));
 		$this->assertTrue($response->headers->hasCacheControlDirective('no-store'));
-		$this->assertTrue($this->assigned['S_DOCUMENTATION_SEARCH_RESULTS']);
-		$this->assertCount(1, $this->search_results);
-		$this->assertSame('Installation', $this->search_results[0]['TITLE']);
+		$this->assertSame(array('/app.php/documentation-search-bundle/en/quickstart/'),
+			json_decode($this->assigned['DOCUMENTATION_SEARCH_BUNDLES'], true));
+		$this->assertSame(array(
+			'prefix' => '/en/',
+			'template' => '/app.php/documentation/en/' . documentation_controller::SEARCH_PATH_PLACEHOLDER,
+			'placeholder' => documentation_controller::SEARCH_PATH_PLACEHOLDER,
+		), json_decode($this->assigned['DOCUMENTATION_SEARCH_LINKS'], true));
+		$this->assertSame('database', $this->assigned['DOCUMENTATION_SEARCH_QUERY']);
 	}
 
 	public function test_search_respects_separate_documentation_sides()
 	{
 		mkdir($this->root . '/en/development');
 		file_put_contents($this->root . '/en/development/index.html', 'developer page');
-		file_put_contents($this->root . '/en/search-index.json', json_encode(array(
-			array('path' => 'quickstart/install', 'title' => 'Installation', 'text' => 'database'),
-			array('path' => 'development', 'title' => 'Developer API', 'text' => 'database'),
-		)));
+		$this->make_bundle('en', 'quickstart');
+		$this->make_bundle('en', 'development');
 		$this->get_controller(array(), 'database', array('phpbbmodders_documentation_split_nav_links' => 1), 'development')->search('en');
-		$this->assertCount(1, $this->search_results);
-		$this->assertSame('Developer API', $this->search_results[0]['TITLE']);
+		$this->assertSame(array('/app.php/documentation-search-bundle/en/development/'),
+			json_decode($this->assigned['DOCUMENTATION_SEARCH_BUNDLES'], true));
 	}
 
 	/** @dataProvider rejected_search_provider */
 	public function test_search_rejects_inaccessible_language_or_disabled_system($denied, $overrides, $lang, $status)
 	{
+		$this->make_bundle('en', 'quickstart');
 		try
 		{
 			$this->get_controller($denied, 'database', $overrides)->search($lang);
@@ -151,11 +156,65 @@ class documentation_controller_test extends TestCase
 		);
 	}
 
-	public function test_search_invalid_query_does_not_require_an_index()
+	public function test_search_without_allowed_bundles_is_unavailable()
 	{
-		$this->get_controller(array(), 'a')->search('en');
-		$this->assertFalse($this->assigned['S_DOCUMENTATION_SEARCH_VALID']);
-		$this->assertFalse($this->assigned['S_DOCUMENTATION_SEARCH_RESULTS']);
+		$this->make_bundle('en', 'englishonly');
+		try
+		{
+			$this->get_controller(array('u_phpbbmodders_documentation_englishonly'), 'database')->search('en');
+			$this->fail('Search without readable bundles must be unavailable');
+		}
+		catch (http_exception $exception)
+		{
+			$this->assertSame(503, $exception->getStatusCode());
+			$this->assertSame('DOCUMENTATION_SEARCH_UNAVAILABLE', $exception->getMessage());
+		}
+	}
+
+	public function test_search_bundle_serves_allowed_files_privately()
+	{
+		$this->make_bundle('en', 'quickstart');
+		$response = $this->get_controller()->search_bundle('en', 'quickstart', 'fragment/en_1.pf_fragment');
+		$this->assertSame(200, $response->getStatusCode());
+		$this->assertSame('application/octet-stream', $response->headers->get('Content-Type'));
+		$this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+		$this->assertTrue($response->headers->hasCacheControlDirective('private'));
+		$this->assertSame('3600', $response->headers->getCacheControlDirective('max-age'));
+		$this->assertFalse($response->headers->hasCacheControlDirective('no-store'));
+		$this->assertSame(realpath($this->root . '/en/quickstart/pagefind/fragment/en_1.pf_fragment'), $response->getFile()->getRealPath());
+		$script = $this->get_controller()->search_bundle('en', 'quickstart', 'pagefind.js');
+		$this->assertSame('text/javascript', $script->headers->get('Content-Type'));
+		$this->assertTrue($script->headers->hasCacheControlDirective('private'));
+		$this->assertTrue($script->headers->hasCacheControlDirective('no-store'));
+	}
+
+	/** @dataProvider rejected_search_bundle_provider */
+	public function test_search_bundle_rejects_unreadable_or_unsafe_files($denied, $overrides, $lang, $section, $path, $status)
+	{
+		$this->make_bundle('en', 'quickstart');
+		$this->make_bundle('en', 'englishonly');
+		try
+		{
+			$this->get_controller($denied, '', $overrides)->search_bundle($lang, $section, $path);
+			$this->fail('Bundle file must be rejected');
+		}
+		catch (http_exception $exception)
+		{
+			$this->assertSame($status, $exception->getStatusCode());
+		}
+	}
+
+	public static function rejected_search_bundle_provider()
+	{
+		return array(
+			'section denied' => array(array('u_phpbbmodders_documentation_englishonly'), array(), 'en', 'englishonly', 'pagefind.js', 403),
+			'language denied' => array(array('u_phpbbmodders_documentation_lang_en'), array(), 'en', 'quickstart', 'pagefind.js', 403),
+			'unknown section' => array(array(), array(), 'en', 'missing', 'pagefind.js', 403),
+			'unknown language' => array(array(), array(), 'xx', 'quickstart', 'pagefind.js', 404),
+			'traversal' => array(array(), array(), 'en', 'quickstart', '../index.html', 404),
+			'missing file' => array(array(), array(), 'en', 'quickstart', 'missing.js', 404),
+			'disabled' => array(array(), array('phpbbmodders_documentation_enabled' => 0), 'en', 'quickstart', 'pagefind.js', 503),
+		);
 	}
 
 	public function test_denied_fallback_language_does_not_render_article()

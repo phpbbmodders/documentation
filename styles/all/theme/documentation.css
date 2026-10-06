@@ -316,25 +316,31 @@
 	line-height: 1.6;
 }
 
-.documentation-search-results {
+/* Rendered by documentation-search.js. */
+.doc-search-results {
 	margin: 20px 0;
 	padding-left: 24px;
 }
 
-.documentation-search-results li {
+.doc-search-results li {
 	padding: 12px 0;
 	border-bottom: 1px solid #ccc;
 	overflow-wrap: anywhere;
 }
 
-.documentation-search-results h3 {
+.doc-search-results h3 {
 	margin: 0 0 8px;
 	font-size: 16px;
 }
 
-.documentation-search-results p {
+.doc-search-results p {
 	margin: 0;
 	max-width: 85ch;
+}
+
+.doc-search-results mark {
+	background-color: #f5e3a3;
+	color: inherit;
 }
 
 .documentation-image-missing {

@@ -46,18 +46,28 @@ Check the URL before rendering each external menu entry. The
 
 ## Documentation search
 
-**Search documentation** searches titles and page text in the selected language.
-Every word must match; matching titles appear first. Results include excerpts and
-are limited to 50 pages. The sidebar **Filter** still filters titles only.
+**Search documentation** searches titles and page text in the selected language
+with [Pagefind](https://pagefind.app/), which runs in the browser and requires
+JavaScript. Results include highlighted excerpts and are limited to 50 pages.
+The sidebar **Filter** still filters titles only.
 
-Hugo generates a `search-index.json` file per language on each build. Rebuild with
-`phpbbdocs_hugo.sh` after changing content. Existing builds without that index
-continue to serve pages, but cannot provide full-text search.
+The phpbbdocs-hugo build writes one Pagefind bundle per language and section
+to `<lang>/<section>/pagefind/`. Rebuild with `phpbbdocs_hugo.sh` after
+changing content. A build without these bundles still serves pages, but search
+reports that it is unavailable.
 
-The phpBB search endpoint checks language and section permissions before returning
-results. Separate navigation limits results to the current documentation side.
-Keep raw access to `docs-build/` blocked, including its JSON indexes, as described
-in [docs/securing-docs-build.md](docs/securing-docs-build.md).
+The search page checks language and section permissions and gives the browser
+only the bundles for sections the user may read. Bundle files are served through
+`/documentation-search-bundle/{lang}/{section}/{path}`, which repeats those
+checks for every file. Index files named by content hash may stay in the
+browser's private cache for the ACP's **Search index cache time** (default 60
+minutes, 0 turns it off), so a user who loses access to a section can still
+search what they already downloaded until it expires. Separate navigation limits search to the current
+documentation side. Keep raw access to `docs-build/` blocked, including its
+Pagefind bundles, as described in [docs/securing-docs-build.md](docs/securing-docs-build.md).
+
+`styles/all/template/js/documentation-search.js` is a copy of phpbbdocs-hugo's
+`site/static/js/documentation-search.js`; keep the two in sync.
 
 ## Tests
 

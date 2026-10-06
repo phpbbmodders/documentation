@@ -150,58 +150,97 @@ class documentation_helper_test extends TestCase
 		);
 	}
 
-	public function test_search_only_returns_existing_allowed_pages_and_matches_every_word()
+	protected function make_bundle($lang, $section, array $files = array('pagefind.js', 'fragment/en_1.pf_fragment'))
 	{
+		foreach ($files as $file)
+		{
+			$path = $this->docs_root . '/' . $lang . '/' . $section . '/pagefind/' . $file;
+			if (!is_dir(dirname($path)))
+			{
+				mkdir(dirname($path), 0777, true);
+			}
+			file_put_contents($path, 'bundle file');
+		}
+	}
+
+	public function test_search_bundle_file_resolves_contained_bundle_files()
+	{
+		$this->make_bundle('en', 'quickstart');
+		$helper = $this->get_helper();
+		$this->assertSame(realpath($this->docs_root . '/en/quickstart/pagefind/pagefind.js'),
+			$helper->get_search_bundle_file('en', 'quickstart', 'pagefind.js'));
+		$this->assertSame(realpath($this->docs_root . '/en/quickstart/pagefind/fragment/en_1.pf_fragment'),
+			$helper->get_search_bundle_file('en', 'quickstart', 'fragment/en_1.pf_fragment'));
+		$this->assertSame('text/javascript', $helper->get_search_bundle_type('pagefind.js'));
+		$this->assertSame('application/octet-stream', $helper->get_search_bundle_type('fragment/en_1.pf_fragment'));
+	}
+
+	/** @dataProvider rejected_search_bundle_provider */
+	public function test_search_bundle_file_rejects_unsafe_or_unknown_files($lang, $section, $path)
+	{
+		$this->make_bundle('en', 'quickstart', array('pagefind.js', 'pagefind-ui.css', '.hidden.js', 'fragment/en_1.pf_fragment'));
+		$this->make_bundle('en', 'notasection');
+		$this->make_bundle('en', 'images');
+		$this->assertFalse($this->get_helper()->get_search_bundle_file($lang, $section, $path));
+	}
+
+	public static function rejected_search_bundle_provider()
+	{
+		return array(
+			'missing file' => array('en', 'quickstart', 'missing.js'),
+			'unserved type' => array('en', 'quickstart', 'pagefind-ui.css'),
+			'dot file' => array('en', 'quickstart', '.hidden.js'),
+			'parent traversal' => array('en', 'quickstart', '../index.html'),
+			'nested traversal' => array('en', 'quickstart', 'fragment/../pagefind.js'),
+			'backslash' => array('en', 'quickstart', 'fragment\\en_1.pf_fragment'),
+			'section without index.html' => array('en', 'notasection', 'pagefind.js'),
+			'images directory' => array('en', 'images', 'pagefind.js'),
+			'unknown language' => array('xx', 'quickstart', 'pagefind.js'),
+			'section in other language' => array('da', 'quickstart', 'pagefind.js'),
+		);
+	}
+
+	public function test_search_bundle_file_rejects_symlinks_out_of_the_bundle()
+	{
+		$this->make_bundle('en', 'quickstart');
+		file_put_contents($this->docs_root . '/outside.js', 'outside');
+		symlink($this->docs_root . '/outside.js', $this->docs_root . '/en/quickstart/pagefind/linked.js');
+		$this->make_page('da', 'linked');
+		symlink($this->docs_root . '/en/quickstart/pagefind', $this->docs_root . '/da/linked/pagefind');
+		$helper = $this->get_helper();
+		$this->assertFalse($helper->get_search_bundle_file('en', 'quickstart', 'linked.js'));
+		$this->assertFalse($helper->get_search_bundle_file('da', 'linked', 'pagefind.js'));
+		// remove_directory() does not remove symlinked directories.
+		unlink($this->docs_root . '/da/linked/pagefind');
+	}
+
+	/** @dataProvider search_cache_control_provider */
+	public function test_search_bundle_cache_control_follows_the_configured_minutes($config_data, $path, $expected)
+	{
+		$this->assertSame($expected, $this->get_helper($config_data)->get_search_bundle_cache_control($path));
+	}
+
+	public static function search_cache_control_provider()
+	{
+		return array(
+			'default when unset' => array(array(), 'fragment/en_1.pf_fragment', 'private, max-age=3600'),
+			'configured minutes' => array(array('phpbbmodders_documentation_search_cache_minutes' => 30), 'index/en_1.pf_index', 'private, max-age=1800'),
+			'zero turns caching off' => array(array('phpbbmodders_documentation_search_cache_minutes' => 0), 'pagefind.en_1.pf_meta', 'private, no-store'),
+			'stored value over the limit is capped' => array(array('phpbbmodders_documentation_search_cache_minutes' => 99999), 'fragment/en_1.pf_fragment', 'private, max-age=86400'),
+			'entry file is never cached' => array(array('phpbbmodders_documentation_search_cache_minutes' => 30), 'pagefind-entry.json', 'private, no-store'),
+			'scripts are never cached' => array(array('phpbbmodders_documentation_search_cache_minutes' => 30), 'pagefind.js', 'private, no-store'),
+		);
+	}
+
+	public function test_search_bundle_sections_keeps_only_allowed_sections_with_bundles()
+	{
+		$this->make_page('en', 'userguide');
 		$this->make_page('en', 'private');
-		file_put_contents($this->docs_root . '/en/search-index.json', json_encode(array(
-			array('path' => 'quickstart/quick_installation', 'title' => 'Installation', 'text' => 'Configure the DATABASE connection safely.'),
-			array('path' => 'private', 'title' => 'Private database connection', 'text' => 'Restricted excerpt'),
-			array('path' => 'quickstart/missing', 'title' => 'Database connection', 'text' => 'Stale entry'),
-			array('path' => 'quickstart/../../../escaped', 'title' => 'Database connection', 'text' => 'Outside build'),
-		)));
+		$this->make_bundle('en', 'quickstart');
+		$this->make_bundle('en', 'private');
 		$helper = $this->get_helper();
-		$results = $helper->search_pages('en', 'database connection', array('quickstart'));
-		$this->assertCount(1, $results);
-		$this->assertSame('Installation', $results[0]['title']);
-		$this->assertStringContainsString('DATABASE connection', $results[0]['excerpt']);
-		$this->assertSame('/forum/app.php/documentation/en/quickstart/quick_installation?sid=test-session', $results[0]['url']);
-		$this->assertSame(array(), $helper->search_pages('en', 'database nonexistent', array('quickstart')));
-		$this->assertSame(array(), $helper->search_pages('en', 'database', array()));
-	}
-
-	public function test_search_prefers_title_matches_and_supports_unicode()
-	{
-		file_put_contents($this->docs_root . '/en/search-index.json', json_encode(array(
-			array('path' => 'quickstart', 'title' => 'Overview', 'text' => 'Ændring in content'),
-			array('path' => 'quickstart/quick_installation', 'title' => 'Ændring', 'text' => 'Instructions'),
-		)));
-		$results = $this->get_helper()->search_pages('en', 'ændring', array('quickstart'));
-		$this->assertCount(2, $results);
-		$this->assertSame('Ændring', $results[0]['title']);
-	}
-
-	public function test_search_decodes_entities_before_matching_and_excerpt_generation()
-	{
-		file_put_contents($this->docs_root . '/en/search-index.json', json_encode(array(
-			array('path' => 'quickstart', 'title' => 'User&rsquo;s guide',
-				'text' => '&#34;homepage&#34;: &#34;https://github.com/phpbb/phpbb&#34; &lt;script&gt; &amp; code'),
-		)));
-		$results = $this->get_helper()->search_pages('en', '"homepage"', array('quickstart'));
-		$this->assertCount(1, $results);
-		$this->assertSame('User’s guide', $results[0]['title']);
-		$this->assertSame('"homepage": "https://github.com/phpbb/phpbb" <script> & code', $results[0]['excerpt']);
-	}
-
-	public function test_search_rejects_missing_malformed_or_external_index()
-	{
-		$helper = $this->get_helper();
-		$this->assertFalse($helper->search_pages('en', 'database', array('quickstart')));
-		file_put_contents($this->docs_root . '/en/search-index.json', 'not JSON');
-		$this->assertFalse($helper->search_pages('en', 'database', array('quickstart')));
-		unlink($this->docs_root . '/en/search-index.json');
-		file_put_contents($this->docs_root . '/outside.json', '[]');
-		symlink($this->docs_root . '/outside.json', $this->docs_root . '/en/search-index.json');
-		$this->assertFalse($helper->search_pages('en', 'database', array('quickstart')));
+		$this->assertSame(array('quickstart'), $helper->get_search_bundle_sections('en', array('quickstart', 'userguide')));
+		$this->assertSame(array(), $helper->get_search_bundle_sections('en', array()));
 	}
 
 	protected function get_controller_helper($base = '/forum/app.php')

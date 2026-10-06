@@ -80,6 +80,7 @@ class main_module
 			'phpbbmodders_documentation_devdocs_nav_icon' => $doc_helper->normalize_nav_icon(isset($config['phpbbmodders_documentation_devdocs_nav_icon']) ? $config['phpbbmodders_documentation_devdocs_nav_icon'] : 'fa-code'),
 			'phpbbmodders_documentation_nav_icon_enabled' => !empty($config['phpbbmodders_documentation_nav_icon_enabled']),
 			'phpbbmodders_documentation_devdocs_nav_icon_enabled' => !empty($config['phpbbmodders_documentation_devdocs_nav_icon_enabled']),
+			'phpbbmodders_documentation_search_cache_minutes' => isset($config['phpbbmodders_documentation_search_cache_minutes']) ? (string) $config['phpbbmodders_documentation_search_cache_minutes'] : '60',
 		);
 
 		if ($cfg_array['phpbbmodders_documentation_fallback_lang'] === '')
@@ -113,13 +114,25 @@ class main_module
 			$cfg_array['phpbbmodders_documentation_devdocs_nav_icon'] = $doc_helper->normalize_nav_icon($request->variable('phpbbmodders_documentation_devdocs_nav_icon', ''));
 			$cfg_array['phpbbmodders_documentation_nav_icon_enabled'] = $request->variable('phpbbmodders_documentation_nav_icon_enabled', false);
 			$cfg_array['phpbbmodders_documentation_devdocs_nav_icon_enabled'] = $request->variable('phpbbmodders_documentation_devdocs_nav_icon_enabled', false);
+			$cfg_array['phpbbmodders_documentation_search_cache_minutes'] = trim($request->variable('phpbbmodders_documentation_search_cache_minutes', ''));
 
-			foreach ($cfg_array as $key => $value)
+			// Whole minutes from 0 (no caching) to 24 hours.
+			if (!preg_match('/\A\d{1,4}\z/', $cfg_array['phpbbmodders_documentation_search_cache_minutes'])
+				|| (int) $cfg_array['phpbbmodders_documentation_search_cache_minutes'] > $doc_helper::SEARCH_CACHE_MAX_MINUTES)
 			{
-				$config->set($key, $value);
+				$error[] = $language->lang('ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES_INVALID', $doc_helper::SEARCH_CACHE_MAX_MINUTES);
 			}
 
-			trigger_error($language->lang('CONFIG_UPDATED') . adm_back_link($this->u_action));
+			if (empty($error))
+			{
+				$cfg_array['phpbbmodders_documentation_search_cache_minutes'] = (int) $cfg_array['phpbbmodders_documentation_search_cache_minutes'];
+				foreach ($cfg_array as $key => $value)
+				{
+					$config->set($key, $value);
+				}
+
+				trigger_error($language->lang('CONFIG_UPDATED') . adm_back_link($this->u_action));
+			}
 		}
 
 		if ($request->is_set_post('resync') && empty($error))
@@ -160,6 +173,8 @@ class main_module
 			'DOCUMENTATION_DEVDOCS_NAV_ICON' => $cfg_array['phpbbmodders_documentation_devdocs_nav_icon'],
 			'S_DOCUMENTATION_NAV_ICON_ENABLED' => $cfg_array['phpbbmodders_documentation_nav_icon_enabled'],
 			'S_DOCUMENTATION_DEVDOCS_NAV_ICON_ENABLED' => $cfg_array['phpbbmodders_documentation_devdocs_nav_icon_enabled'],
+			'DOCUMENTATION_SEARCH_CACHE_MINUTES' => $cfg_array['phpbbmodders_documentation_search_cache_minutes'],
+			'DOCUMENTATION_SEARCH_CACHE_MAX_MINUTES' => $doc_helper::SEARCH_CACHE_MAX_MINUTES,
 
 			'U_ACTION' => $this->u_action,
 		));

@@ -5,6 +5,15 @@ phpbbmodders_documentation_search:
     requirements:
         lang:         '[A-Za-z0-9_-]+'
 
+phpbbmodders_documentation_search_bundle:
+    path:             /documentation-search-bundle/{lang}/{section}/{path}
+    defaults:
+        _controller:  phpbbmodders.documentation.controller:search_bundle
+    requirements:
+        lang:         '[A-Za-z0-9_-]+'
+        section:      '[A-Za-z0-9_-]+'
+        path:         '.+'
+
 phpbbmodders_documentation_image:
     path:             /documentation-image/{lang}/{path}
     defaults:

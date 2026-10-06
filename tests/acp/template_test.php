@@ -42,7 +42,11 @@ class template_test extends \PHPUnit\Framework\TestCase
 		@$dom->loadHTML($html);
 		$xpath = new \DOMXPath($dom);
 		$controls = $xpath->query('//*[@data-doc-tooltip]');
-		$this->assertCount(7, $controls);
+		$this->assertCount(8, $controls);
+		$cache_minutes = $xpath->query('//input[@id="phpbbmodders_documentation_search_cache_minutes"]')->item(0);
+		$this->assertNotNull($cache_minutes);
+		$this->assertSame('number', $cache_minutes->getAttribute('type'));
+		$this->assertSame('0', $cache_minutes->getAttribute('min'));
 		foreach ($controls as $control)
 		{
 			$this->assertSame($description, $control->getAttribute('data-doc-tooltip'));
