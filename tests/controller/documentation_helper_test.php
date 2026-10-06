@@ -306,11 +306,16 @@ class documentation_helper_test extends TestCase
 		file_put_contents($this->docs_root . '/en/quickstart/index.html', '<html><body>
 			<article class="docs-article"><img src="/en/images/missing.png" alt="A &quot;quoted&quot; &lt;diagram&gt;">
 			<img src="/en/images/decorative.png" alt=""></article></body></html>');
-		$result = $this->get_helper()->resolve_and_load('en', 'quickstart');
+		$language = $this->createMock(language::class);
+		$language->method('lang')->willReturnArgument(0);
+		$helper = new documentation_helper($this->get_config(), $language, $this->get_request(),
+			$this->get_user(), '', $this->get_controller_helper());
+		$result = $helper->resolve_and_load('en', 'quickstart');
 		$dom = new \DOMDocument();
 		@$dom->loadHTML($result['article_html']);
 		$notices = (new \DOMXPath($dom))->query('//span[@class="documentation-image-missing"]');
 		$this->assertCount(2, $notices);
+		$this->assertSame('DOCUMENTATION_IMAGE_MISSING', $notices->item(0)->textContent);
 		$this->assertSame('A "quoted" <diagram>', $notices->item(0)->getAttribute('data-doc-tooltip'));
 		$this->assertSame('0', $notices->item(0)->getAttribute('tabindex'));
 		$this->assertFalse($notices->item(1)->hasAttribute('data-doc-tooltip'));
