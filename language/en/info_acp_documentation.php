@@ -37,6 +37,10 @@ $lang = array_merge($lang, array(
 	'ACP_DOCUMENTATION_SPLIT_NAV_LINKS'         => 'Separate navigation links',
 	'ACP_DOCUMENTATION_SPLIT_NAV_LINKS_EXPLAIN' => 'Show “Documentation” and “Developer Documentation” as two independent links instead of one combined link. When separate, each page’s sidebar only lists sections from its own side too — a Developer Documentation page never lists end-user sections and vice versa.',
 
+	'ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES'         => 'Search index cache time',
+	'ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES_EXPLAIN' => 'How long each visitor’s browser may keep the search index files it downloads, in minutes. Longer makes repeat searches faster, but after you remove someone’s access to a section, their browser can still search that section’s cached files until they expire. 0 turns caching off.',
+	'ACP_DOCUMENTATION_SEARCH_CACHE_MINUTES_INVALID' => 'Search index cache time must be a whole number of minutes from 0 to %d.',
+
 	'ACP_DOCUMENTATION_NAV_LINK'         => 'Show “Documentation” in navigation bar',
 	'ACP_DOCUMENTATION_NAV_LINK_EXPLAIN' => 'Add a “Documentation” entry to the forum’s top navigation bar. Disabling this only hides the link — the documentation itself stays reachable at its URL for anyone with permission, so you can link it from your own site menu instead.',
 

@@ -22,6 +22,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class documentation_controller
 {
+	/** Stands in for a page path in the page route given to the search script. */
+	const SEARCH_PATH_PLACEHOLDER = 'documentation-search-path';
+
 	/** @var auth */
 	protected $auth;
 
@@ -147,6 +150,14 @@ class documentation_controller
 		return $this->controller_helper->render('documentation_body.html', $result['title']);
 	}
 
+	/**
+	 * Search page. Results come from Pagefind in the browser
+	 * (documentation-search.js); this only passes it the search bundles
+	 * of sections the user may read.
+	 *
+	 * @param string $lang
+	 * @return \Symfony\Component\HttpFoundation\Response
+	 */
 	public function search($lang)
 	{
 		if (!(bool) $this->config['phpbbmodders_documentation_enabled'])
@@ -168,34 +179,83 @@ class documentation_controller
 		{
 			return $this->access_denied_response();
 		}
-		$query = trim(htmlspecialchars_decode($this->request->variable('q', '', true), ENT_QUOTES));
-		$valid = mb_strlen($query) >= 2 && mb_strlen($query) <= 100;
-		$results = array();
-		if ($valid)
+		$bundles = array();
+		foreach ($this->doc_helper->get_search_bundle_sections($lang, $sections) as $section)
 		{
-			$results = $this->doc_helper->search_pages($lang, $query, $sections);
-			if ($results === false)
-			{
-				throw new http_exception(503, 'DOCUMENTATION_SEARCH_UNAVAILABLE');
-			}
+			$bundles[] = $this->search_bundle_url($lang, $section);
 		}
+		if (empty($bundles))
+		{
+			throw new http_exception(503, 'DOCUMENTATION_SEARCH_UNAVAILABLE');
+		}
+		$query = trim(htmlspecialchars_decode($this->request->variable('q', '', true), ENT_QUOTES));
+		// Pagefind returns Hugo paths (/<lang>/<path>/); the search script
+		// swaps the placeholder in this page route for each <path>.
+		$page_template = $this->controller_helper->route('phpbbmodders_documentation_page',
+			array('lang' => $lang, 'path' => self::SEARCH_PATH_PLACEHOLDER), false);
 		$this->template->assign_vars(array(
 			'U_DOCUMENTATION_SEARCH' => $this->controller_helper->route('phpbbmodders_documentation_search', array('lang' => $lang)),
 			'U_DOCUMENTATION_SEARCH_BACK' => $this->route_for($lang, $scope),
 			'DOCUMENTATION_SEARCH_SCOPE' => $scope,
 			'DOCUMENTATION_SEARCH_QUERY' => mb_substr($query, 0, 100),
-			'S_DOCUMENTATION_SEARCH_VALID' => $valid,
-			'S_DOCUMENTATION_SEARCH_RESULTS' => !empty($results),
+			'DOCUMENTATION_SEARCH_BUNDLES' => json_encode($bundles),
+			'DOCUMENTATION_SEARCH_LINKS' => json_encode(array(
+				'prefix' => '/' . $lang . '/',
+				'template' => $page_template,
+				'placeholder' => self::SEARCH_PATH_PLACEHOLDER,
+			)),
+			'DOCUMENTATION_SEARCH_MESSAGES' => json_encode(array(
+				'length' => $this->user->lang('DOCUMENTATION_SEARCH_LENGTH'),
+				'noResults' => $this->user->lang('DOCUMENTATION_SEARCH_NO_RESULTS'),
+				'unavailable' => $this->user->lang('DOCUMENTATION_SEARCH_UNAVAILABLE'),
+				'loading' => $this->user->lang('DOCUMENTATION_SEARCH_LOADING'),
+			)),
 		));
-		foreach ($results as $result)
-		{
-			$this->template->assign_block_vars('documentation_search_result', array(
-				'TITLE' => $result['title'], 'EXCERPT' => $result['excerpt'], 'U_PAGE' => $result['url'],
-			));
-		}
 		$response = $this->controller_helper->render('documentation_search.html', $this->user->lang('DOCUMENTATION_SEARCH'));
 		$response->headers->set('Cache-Control', 'private, no-store');
 		return $response;
+	}
+
+	/**
+	 * Serves one file of a section's Pagefind search bundle, with the same
+	 * language and section permission checks as the section's pages.
+	 *
+	 * @param string $lang
+	 * @param string $section
+	 * @param string $path File path inside the bundle.
+	 * @return BinaryFileResponse
+	 */
+	public function search_bundle($lang, $section, $path)
+	{
+		if (!(bool) $this->config['phpbbmodders_documentation_enabled'])
+		{
+			throw new http_exception(503, 'DOCUMENTATION_DISABLED');
+		}
+		if ($this->doc_helper->get_docs_root() === false)
+		{
+			throw new http_exception(503, 'DOCUMENTATION_NOT_BUILT');
+		}
+		if (!$this->doc_helper->is_known_language($lang))
+		{
+			throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
+		}
+		if (!$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $lang)
+			|| !in_array($section, $this->allowed_sections($lang, $section), true))
+		{
+			throw new http_exception(403, 'DOCUMENTATION_ACCESS_DENIED');
+		}
+
+		$file = $this->doc_helper->get_search_bundle_file($lang, $section, $path);
+		if ($file === false)
+		{
+			throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
+		}
+
+		return new BinaryFileResponse($file, 200, array(
+			'Content-Type' => $this->doc_helper->get_search_bundle_type($path),
+			'X-Content-Type-Options' => 'nosniff',
+			'Cache-Control' => $this->doc_helper->get_search_bundle_cache_control($path),
+		), false);
 	}
 
 	public function image($lang, $path)
@@ -308,6 +368,24 @@ class documentation_controller
 		return $path !== ''
 			? $this->controller_helper->route('phpbbmodders_documentation_page', array('lang' => $lang, 'path' => $path))
 			: $this->controller_helper->route('phpbbmodders_documentation_lang_root', array('lang' => $lang));
+	}
+
+	/**
+	 * Base URL of a section's search bundle, ending in "/". Pagefind
+	 * appends file names to it, so any query string (such as a session
+	 * ID) is dropped; bundle requests rely on the session cookie.
+	 *
+	 * @param string $lang
+	 * @param string $section
+	 * @return string
+	 */
+	protected function search_bundle_url($lang, $section)
+	{
+		$url = $this->controller_helper->route('phpbbmodders_documentation_search_bundle',
+			array('lang' => $lang, 'section' => $section, 'path' => 'pagefind.js'), false);
+		$url = strtok($url, '?#');
+
+		return substr($url, 0, strrpos($url, '/') + 1);
 	}
 
 	/**

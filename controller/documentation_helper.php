@@ -34,6 +34,33 @@ class documentation_helper
 	 */
 	const DEVDOCS_SECTION = 'development';
 
+	/**
+	 * File types the browser loads from a Pagefind search bundle, and the
+	 * Content-Type each is served as. Stylesheets are left out because
+	 * documentation-search.js renders results without Pagefind's UI.
+	 */
+	const SEARCH_BUNDLE_TYPES = array(
+		'js'          => 'text/javascript',
+		'json'        => 'application/json',
+		'pagefind'    => 'application/octet-stream',
+		'pf_fragment' => 'application/octet-stream',
+		'pf_index'    => 'application/octet-stream',
+		'pf_meta'     => 'application/octet-stream',
+		'pf_filter'   => 'application/octet-stream',
+	);
+
+	/**
+	 * Pagefind names these files after a hash of their content, so a
+	 * rebuild never changes one in place. They may be cached privately for
+	 * the ACP's search cache time; the entry file and scripts that point to
+	 * them are never cached. After a permission is revoked, a browser can
+	 * keep using files it already cached until they expire.
+	 */
+	const SEARCH_BUNDLE_CACHEABLE = array('pf_fragment', 'pf_index', 'pf_meta', 'pf_filter');
+
+	/** Upper limit of the ACP search cache time, in minutes (24 hours). */
+	const SEARCH_CACHE_MAX_MINUTES = 1440;
+
 	/** @var config */
 	protected $config;
 
@@ -571,73 +598,79 @@ class documentation_helper
 		return $real;
 	}
 
-	/** Search only authorized pages in a contained, language-specific build index. */
-	public function search_pages($lang, $query, array $allowed_sections)
+	/**
+	 * Sections of $lang, limited to $allowed_sections, that have a Pagefind
+	 * search bundle (written by phpbbdocs-hugo's build_search_index.sh to
+	 * <lang>/<section>/pagefind/).
+	 *
+	 * @param string $lang
+	 * @param array $allowed_sections Sections the current user may read.
+	 * @return array Section slugs, in $allowed_sections order.
+	 */
+	public function get_search_bundle_sections($lang, array $allowed_sections)
 	{
+		$sections = array();
+		foreach ($allowed_sections as $section)
+		{
+			if ($this->get_search_bundle_file($lang, $section, 'pagefind.js') !== false)
+			{
+				$sections[] = $section;
+			}
+		}
+
+		return $sections;
+	}
+
+	/**
+	 * Resolves a file inside one section's Pagefind bundle, containment
+	 * checked against <docs_root>/<lang>/<section>/pagefind/. Callers must
+	 * check the user's language and section permissions first.
+	 *
+	 * @param string $lang
+	 * @param string $section
+	 * @param string $path File path relative to the bundle directory.
+	 * @return string|false
+	 */
+	public function get_search_bundle_file($lang, $section, $path)
+	{
+		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+		if (!isset(self::SEARCH_BUNDLE_TYPES[$extension])
+			|| !preg_match('#\A[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_-][A-Za-z0-9_.-]*)?\z#', $path)
+			|| !in_array($section, $this->get_available_sections($lang), true))
+		{
+			return false;
+		}
+
 		$root = $this->get_docs_root();
-		$lang_root = $root !== false ? realpath($root . '/' . $lang) : false;
-		$file = $lang_root !== false ? realpath($lang_root . '/search-index.json') : false;
-		if (!$this->is_known_language($lang) || $lang_root === false || $file === false
-			|| strpos($lang_root, $root . DIRECTORY_SEPARATOR) !== 0
-			|| strpos($file, $lang_root . DIRECTORY_SEPARATOR) !== 0
-			|| !is_file($file) || filesize($file) > 16 * 1024 * 1024)
-		{
-			return false;
-		}
-		$pages = json_decode(file_get_contents($file), true);
-		if (!is_array($pages))
-		{
-			return false;
-		}
-		$terms = preg_split('/\s+/u', mb_strtolower(trim($query)), -1, PREG_SPLIT_NO_EMPTY);
-		if (!$terms)
-		{
-			return array();
-		}
-		$results = array();
-		foreach ($pages as $page)
-		{
-			if (!is_array($page) || !isset($page['path'], $page['title'], $page['text'])
-				|| !is_string($page['path']) || !is_string($page['title']) || !is_string($page['text'])
-				|| !in_array($this->get_section($page['path']), $allowed_sections, true)
-				|| $this->get_content_file($lang, $page['path']) === false)
-			{
-				continue;
-			}
-			$text = trim(preg_replace('/\s+/u', ' ', html_entity_decode($page['text'], ENT_QUOTES | ENT_HTML5, 'UTF-8')));
-			$page_title = html_entity_decode($page['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-			$title = mb_strtolower($page_title);
-			$body = mb_strtolower($text);
-			$score = 0;
-			$position = null;
-			foreach ($terms as $term)
-			{
-				$in_title = mb_strpos($title, $term) !== false;
-				$in_body = mb_strpos($body, $term);
-				if (!$in_title && $in_body === false)
-				{
-					continue 2;
-				}
-				$score += $in_title ? 2 : 1;
-				if ($in_body !== false && ($position === null || $in_body < $position))
-				{
-					$position = $in_body;
-				}
-			}
-			$start = max(0, (int) $position - 60);
-			$excerpt = ($start > 0 ? '...' : '') . mb_substr($text, $start, 240);
-			if (mb_strlen($text) > $start + 240)
-			{
-				$excerpt .= '...';
-			}
-			$results[] = array('title' => $page_title, 'excerpt' => $excerpt,
-				'url' => $this->controller_helper->route('phpbbmodders_documentation_page', array('lang' => $lang, 'path' => $page['path'])),
-				'score' => $score);
-		}
-		usort($results, function ($a, $b) {
-			return $b['score'] <=> $a['score'] ?: strcmp($a['title'], $b['title']);
-		});
-		return array_slice($results, 0, 50);
+		$bundle_root = realpath($root . '/' . $lang . '/' . $section . '/pagefind');
+		$file = realpath($root . '/' . $lang . '/' . $section . '/pagefind/' . $path);
+
+		return $bundle_root !== false && strpos($bundle_root, $root . DIRECTORY_SEPARATOR . $lang . DIRECTORY_SEPARATOR . $section . DIRECTORY_SEPARATOR) === 0
+			&& $file !== false && is_file($file) && strpos($file, $bundle_root . DIRECTORY_SEPARATOR) === 0
+			? $file : false;
+	}
+
+	/**
+	 * @param string $path
+	 * @return string The Content-Type a Pagefind bundle file is served as.
+	 */
+	public function get_search_bundle_type($path)
+	{
+		return self::SEARCH_BUNDLE_TYPES[strtolower(pathinfo($path, PATHINFO_EXTENSION))];
+	}
+
+	/**
+	 * @param string $path
+	 * @return string The Cache-Control header for a Pagefind bundle file.
+	 */
+	public function get_search_bundle_cache_control($path)
+	{
+		$minutes = isset($this->config['phpbbmodders_documentation_search_cache_minutes'])
+			? min(max((int) $this->config['phpbbmodders_documentation_search_cache_minutes'], 0), self::SEARCH_CACHE_MAX_MINUTES)
+			: 60;
+
+		return $minutes > 0 && in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), self::SEARCH_BUNDLE_CACHEABLE, true)
+			? 'private, max-age=' . ($minutes * 60) : 'private, no-store';
 	}
 
 	/** @return string|false An image contained in its own language build. */

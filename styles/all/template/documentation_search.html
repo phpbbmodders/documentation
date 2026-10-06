@@ -4,16 +4,13 @@
 	<h2>{{ lang('DOCUMENTATION_SEARCH') }}</h2>
 	{% include '@phpbbmodders_documentation/documentation_search_form.html' %}
 	<p><a href="{{ U_DOCUMENTATION_SEARCH_BACK|e }}">{{ lang('DOCUMENTATION_SEARCH_BACK') }}</a></p>
-	{% if not S_DOCUMENTATION_SEARCH_VALID %}
-		<p role="status">{{ lang('DOCUMENTATION_SEARCH_LENGTH') }}</p>
-	{% elseif not S_DOCUMENTATION_SEARCH_RESULTS %}
-		<p role="status">{{ lang('DOCUMENTATION_SEARCH_NO_RESULTS') }}</p>
-	{% else %}
-		<ol class="documentation-search-results">
-		{% for result in documentation_search_result %}
-			<li><h3><a href="{{ result.U_PAGE|e }}">{{ result.TITLE|e }}</a></h3><p>{{ result.EXCERPT|e }}</p></li>
-		{% endfor %}
-		</ol>
-	{% endif %}
+	<div data-doc-search
+		data-doc-search-bundles="{{ DOCUMENTATION_SEARCH_BUNDLES|e }}"
+		data-doc-search-links="{{ DOCUMENTATION_SEARCH_LINKS|e }}"
+		data-doc-search-messages="{{ DOCUMENTATION_SEARCH_MESSAGES|e }}"
+		data-doc-search-query="{{ DOCUMENTATION_SEARCH_QUERY|e }}">
+		<noscript><p>{{ lang('DOCUMENTATION_SEARCH_NEEDS_JS') }}</p></noscript>
+	</div>
 </div>
+{% INCLUDEJS 'js/documentation-search.js' %}
 {% include 'overall_footer.html' %}
