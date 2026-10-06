@@ -13,7 +13,7 @@ Shows the board's Hugo documentation site inside phpBB, styled with the active b
 
 ## Requirements
 
-- phpBB 3.3.19 or later
+- phpBB 3.3.19 or a later 3.3 release
 - PHP 8.0 or later
 
 ## Installation
@@ -21,11 +21,15 @@ Shows the board's Hugo documentation site inside phpBB, styled with the active b
 1. Copy the extension to `/ext/phpbbmodders/documentation`
 2. In the Administration Control Panel, go to **Customise → Manage extensions**
 3. Enable the **Documentation** extension
-4. Point `proteus_hugo.sh`'s build output at the extension's own `docs-build/` directory:
-   `./proteus_hugo.sh all /path/to/ext/phpbbmodders/documentation/docs-build`
-   This is also the default **docs build path** in the settings, so no further ACP configuration is needed unless the build lives elsewhere.
+4. Build the documentation into phpBB's `store/phpbbmodders_documentation/` directory:
+   `./phpbbdocs_hugo.sh all /path/to/phpbb/store/phpbbmodders_documentation`
+   This is the default **docs build path** in the settings, so no further ACP configuration is needed unless the build lives elsewhere. Keeping it outside the extension's own directory means updating the extension doesn't delete it.
 5. Documentation is open to everyone, including guests, by default. Restrict it afterwards through the normal Permissions screens if needed.
-6. **Block direct web access to `docs-build/`** on anything other than Apache or LiteSpeed. Without it, the raw pages can be read directly, bypassing the extension's permissions. See [docs/securing-docs-build.md](docs/securing-docs-build.md) for Nginx, Caddy, IIS and lighttpd snippets.
+6. **Make sure the build can't be read directly from the web.** phpBB's own deny rules for `store/` cover the default location on Apache, LiteSpeed, and servers set up from phpBB's sample configs. Without a deny rule, the raw pages can be read directly, bypassing the extension's permissions. See [docs/securing-docs-build.md](docs/securing-docs-build.md).
+
+The build's HTML is shown inside the board as-is, so only put a build you trust at the docs build path, in a directory only administrators can write to.
+
+Boards upgraded from an earlier version keep their build at `ext/phpbbmodders/documentation/docs-build/` if one was already there; move it to the new location and update the docs build path to stop the next extension update deleting it.
 
 If you add a new top-level section or a new language to the docs build later, use the **Resync permissions** button on the settings page.
 
@@ -63,8 +67,8 @@ checks for every file. Index files named by content hash may stay in the
 browser's private cache for the ACP's **Search index cache time** (default 60
 minutes, 0 turns it off), so a user who loses access to a section can still
 search what they already downloaded until it expires. Separate navigation limits search to the current
-documentation side. Keep raw access to `docs-build/` blocked, including its
-Pagefind bundles, as described in [docs/securing-docs-build.md](docs/securing-docs-build.md).
+documentation side. Keep raw access to the build directory blocked, including
+its Pagefind bundles, as described in [docs/securing-docs-build.md](docs/securing-docs-build.md).
 
 `styles/all/template/js/documentation-search.js` is a copy of phpbbdocs-hugo's
 `site/static/js/documentation-search.js`; keep the two in sync.

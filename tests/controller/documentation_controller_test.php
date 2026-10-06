@@ -57,7 +57,7 @@ class documentation_controller_test extends TestCase
 		rmdir($this->root);
 	}
 
-	protected function get_controller(array $denied = array(), $query = '', array $overrides = array(), $scope = '')
+	protected function get_controller(array $denied = array(), $query = '', array $overrides = array(), $scope = '', $is_registered = true)
 	{
 		$config = new config(array_merge(array(
 			'phpbbmodders_documentation_enabled' => 1,
@@ -75,7 +75,7 @@ class documentation_controller_test extends TestCase
 			return $name === 'q' ? $query : ($name === 'scope' ? $scope : $default);
 		});
 		$user = $this->createMock(user::class);
-		$user->data = array('is_registered' => true);
+		$user->data = array('is_registered' => $is_registered);
 		$routes = $this->createMock(controller_helper::class);
 		$routes->method('route')->willReturnCallback(function ($name, $params) {
 			if ($name === 'phpbbmodders_documentation_search_bundle')
@@ -92,7 +92,19 @@ class documentation_controller_test extends TestCase
 		$helper = $this->getMockBuilder(documentation_helper::class)
 			->setConstructorArgs(array($config, $this->createMock(language::class), $request, $user, '', $routes))
 			->onlyMethods(array('set_language_cookie'))->getMock();
-		return new documentation_controller($auth, $config, $routes, $template, $user, $helper, '', 'php', $request);
+		$language = $this->createMock(language::class);
+		$language->method('lang')->willReturnArgument(0);
+		if (!$is_registered)
+		{
+			// login_box() renders the login page and ends the request.
+			return new class($auth, $config, $routes, $template, $user, $helper, $request, $language) extends documentation_controller {
+				protected function show_login_box()
+				{
+					throw new \RuntimeException('login_box');
+				}
+			};
+		}
+		return new documentation_controller($auth, $config, $routes, $template, $user, $helper, $request, $language);
 	}
 
 	protected function make_bundle($lang, $section)
@@ -287,5 +299,37 @@ class documentation_controller_test extends TestCase
 			'missing in both languages' => array('quickstart/missing', array(), 404),
 			'cross-language traversal' => array('quickstart/../../en/quickstart/install', array('u_phpbbmodders_documentation_lang_en'), 404),
 		);
+	}
+
+	public function test_guest_without_access_gets_the_login_box()
+	{
+		$this->expectException(\RuntimeException::class);
+		$this->expectExceptionMessage('login_box');
+		$this->get_controller(array('u_phpbbmodders_documentation_lang_en'), '', array(), '', false)->handle('en', 'quickstart');
+	}
+
+	public function test_registered_user_without_access_gets_403()
+	{
+		try
+		{
+			$this->get_controller(array('u_phpbbmodders_documentation_lang_en'))->handle('en', 'quickstart');
+			$this->fail('A registered user without access must get a 403');
+		}
+		catch (http_exception $exception)
+		{
+			$this->assertSame(403, $exception->getStatusCode());
+		}
+	}
+
+	public function test_search_messages_come_from_the_language_service()
+	{
+		$this->make_bundle('en', 'quickstart');
+		$this->get_controller(array(), 'database')->search('en');
+		$this->assertSame(array(
+			'length' => 'DOCUMENTATION_SEARCH_LENGTH',
+			'noResults' => 'DOCUMENTATION_SEARCH_NO_RESULTS',
+			'unavailable' => 'DOCUMENTATION_SEARCH_UNAVAILABLE',
+			'loading' => 'DOCUMENTATION_SEARCH_LOADING',
+		), json_decode($this->assigned['DOCUMENTATION_SEARCH_MESSAGES'], true));
 	}
 }

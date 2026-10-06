@@ -72,6 +72,7 @@ $lang = array_merge($lang, array(
 	'ACP_DOCUMENTATION_DEVDOCS_NAV_ICON_EXPLAIN' => 'Optional Font Awesome icon name, such as fa-code. Used only with separate navigation links. Leave blank for no icon.',
 
 	'ACP_DOCUMENTATION_DETECTED'       => 'Detected content',
+	'ACP_DOCUMENTATION_IGNORED_NAMES'  => 'These build directories were skipped because their names can’t be used in permission names: %s. Use only lowercase letters, digits, “_” and “-”, keep names short (up to 16 characters for a language, 21 for a section), and don’t start a section name with “lang_”.',
 	'ACP_DOCUMENTATION_LANG_CODE'      => 'Language',
 	'ACP_DOCUMENTATION_LANG_SECTIONS'  => 'Sections',
 

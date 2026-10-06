@@ -18,7 +18,7 @@ if (!defined('IN_PHPBB'))
 
 if (empty($lang) || !is_array($lang))
 {
-	$lang = [];
+	$lang = array();
 }
 
 // DEVELOPERS PLEASE NOTE
@@ -37,6 +37,6 @@ if (empty($lang) || !is_array($lang))
 // ’ » “ ” …
 //
 
-$lang = array_merge($lang, [
-	'DOCUMENTATION_NOT_ENABLEABLE'	=> 'Documentation could not be enabled. The minimum requirements of phpBB 3.3.19 and/or PHP 8.0.0 were not satisfied.',
-]);
+$lang = array_merge($lang, array(
+	'DOCUMENTATION_NOT_ENABLEABLE'	=> 'Documentation could not be enabled. It requires phpBB 3.3.19 or a later 3.3 release, and PHP 8.0.0 or later.',
+));

@@ -18,7 +18,7 @@
 	<div class="documentation-language-picker">
 		<span class="sr-only">{{ L_LANGUAGE }}{{ L_COLON }}</span>
 		{% for documentation_language in documentation_language %}
-			<a href="{{ documentation_language.U_SELECT }}"{% if documentation_language.S_CURRENT %} class="documentation-language-current"{% endif %}>{{ documentation_language.LABEL }}</a>
+			<a href="{{ documentation_language.U_SELECT }}"{% if documentation_language.S_CURRENT %} class="documentation-language-current"{% endif %}>{{ documentation_language.LABEL|e }}</a>
 		{% endfor %}
 	</div>
 	{% endif %}

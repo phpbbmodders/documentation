@@ -14,10 +14,10 @@ class ext extends \phpbb\extension\base
 {
 	/**
 	 * Check whether the extension can be enabled.
-	 * The current phpBB version should meet or exceed
-	 * the minimum version required by this extension.
+	 * The current phpBB version must be within the range this extension
+	 * supports, and PHP must meet the minimum version.
 	 *
-	 * @return bool|array
+	 * @return bool|string True, or the reason it can't be enabled.
 	 * @access public
 	 */
 	public function is_enableable()
@@ -36,13 +36,14 @@ class ext extends \phpbb\extension\base
 	}
 
 	/**
-	 * Require phpBB 3.3.19
+	 * Require phpBB 3.3.19 or later within the 3.3 line
 	 *
 	 * @return bool
 	 */
 	public function check_phpbb_version()
 	{
-		return phpbb_version_compare(PHPBB_VERSION, '3.3.19', '>=');
+		return phpbb_version_compare(PHPBB_VERSION, '3.3.19', '>=')
+			&& phpbb_version_compare(PHPBB_VERSION, '4.0.0-dev', '<');
 	}
 
 	/**

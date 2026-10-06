@@ -14,6 +14,7 @@ use phpbb\auth\auth;
 use phpbb\config\config;
 use phpbb\controller\helper as controller_helper;
 use phpbb\exception\http_exception;
+use phpbb\language\language;
 use phpbb\request\request_interface;
 use phpbb\template\template;
 use phpbb\user;
@@ -24,6 +25,15 @@ class documentation_controller
 {
 	/** Stands in for a page path in the page route given to the search script. */
 	const SEARCH_PATH_PLACEHOLDER = 'documentation-search-path';
+
+	/** Image types the image route serves. SVG is left out on purpose. */
+	const IMAGE_MIME_TYPES = array('image/png', 'image/gif', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/x-icon');
+
+	/**
+	 * getimagesize() raises a notice for files shorter than this, and no
+	 * real image is this small, so smaller files are rejected first.
+	 */
+	const MIN_IMAGE_BYTES = 12;
 
 	/** @var auth */
 	protected $auth;
@@ -43,16 +53,13 @@ class documentation_controller
 	/** @var documentation_helper */
 	protected $doc_helper;
 
-	/** @var string */
-	protected $phpbb_root_path;
-
-	/** @var string */
-	protected $php_ext;
-
 	/** @var request_interface */
 	protected $request;
 
-	public function __construct(auth $auth, config $config, controller_helper $controller_helper, template $template, user $user, documentation_helper $doc_helper, $phpbb_root_path, $php_ext, request_interface $request)
+	/** @var language */
+	protected $language;
+
+	public function __construct(auth $auth, config $config, controller_helper $controller_helper, template $template, user $user, documentation_helper $doc_helper, request_interface $request, language $language)
 	{
 		$this->auth = $auth;
 		$this->config = $config;
@@ -60,9 +67,8 @@ class documentation_controller
 		$this->template = $template;
 		$this->user = $user;
 		$this->doc_helper = $doc_helper;
-		$this->phpbb_root_path = $phpbb_root_path;
-		$this->php_ext = $php_ext;
 		$this->request = $request;
+		$this->language = $language;
 	}
 
 	/**
@@ -105,14 +111,14 @@ class documentation_controller
 
 		if (!$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $lang))
 		{
-			return $this->access_denied_response();
+			$this->deny_access();
 		}
 
 		$allowed_sections = $this->allowed_sections($lang, $section);
 
 		if ($section === '' ? empty($allowed_sections) : !in_array($section, $allowed_sections, true))
 		{
-			return $this->access_denied_response();
+			$this->deny_access();
 		}
 
 		$content_lang = $lang;
@@ -125,12 +131,12 @@ class documentation_controller
 			}
 			if (!$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $content_lang))
 			{
-				return $this->access_denied_response();
+				$this->deny_access();
 			}
 			$allowed_sections = $this->allowed_sections($content_lang, $section);
 			if ($section === '' ? empty($allowed_sections) : !in_array($section, $allowed_sections, true))
 			{
-				return $this->access_denied_response();
+				$this->deny_access();
 			}
 		}
 
@@ -177,7 +183,7 @@ class documentation_controller
 		$sections = $this->allowed_sections($lang, $scope);
 		if (!$this->auth->acl_get('u_phpbbmodders_documentation_lang_' . $lang) || empty($sections))
 		{
-			return $this->access_denied_response();
+			$this->deny_access();
 		}
 		$bundles = array();
 		foreach ($this->doc_helper->get_search_bundle_sections($lang, $sections) as $section)
@@ -205,13 +211,13 @@ class documentation_controller
 				'placeholder' => self::SEARCH_PATH_PLACEHOLDER,
 			)),
 			'DOCUMENTATION_SEARCH_MESSAGES' => json_encode(array(
-				'length' => $this->user->lang('DOCUMENTATION_SEARCH_LENGTH'),
-				'noResults' => $this->user->lang('DOCUMENTATION_SEARCH_NO_RESULTS'),
-				'unavailable' => $this->user->lang('DOCUMENTATION_SEARCH_UNAVAILABLE'),
-				'loading' => $this->user->lang('DOCUMENTATION_SEARCH_LOADING'),
+				'length' => $this->language->lang('DOCUMENTATION_SEARCH_LENGTH'),
+				'noResults' => $this->language->lang('DOCUMENTATION_SEARCH_NO_RESULTS'),
+				'unavailable' => $this->language->lang('DOCUMENTATION_SEARCH_UNAVAILABLE'),
+				'loading' => $this->language->lang('DOCUMENTATION_SEARCH_LOADING'),
 			)),
 		));
-		$response = $this->controller_helper->render('documentation_search.html', $this->user->lang('DOCUMENTATION_SEARCH'));
+		$response = $this->controller_helper->render('documentation_search.html', $this->language->lang('DOCUMENTATION_SEARCH'));
 		$response->headers->set('Cache-Control', 'private, no-store');
 		return $response;
 	}
@@ -258,6 +264,15 @@ class documentation_controller
 		), false);
 	}
 
+	/**
+	 * Serves an image from the build, but only one the given page's
+	 * article actually references, with the same language and section
+	 * permission checks as that page.
+	 *
+	 * @param string $lang Language directory the image is stored in.
+	 * @param string $path Image path inside that language directory.
+	 * @return BinaryFileResponse
+	 */
 	public function image($lang, $path)
 	{
 		if (!(bool) $this->config['phpbbmodders_documentation_enabled'])
@@ -269,7 +284,7 @@ class documentation_controller
 			throw new http_exception(503, 'DOCUMENTATION_NOT_BUILT');
 		}
 
-		$page = $this->request->variable('page', '');
+		$page = $this->request->variable('page', '', true);
 		$page_lang = $this->request->variable('page_lang', (string) $lang);
 		if (!$this->doc_helper->is_known_language($lang) || !$this->doc_helper->is_known_language($page_lang))
 		{
@@ -288,8 +303,8 @@ class documentation_controller
 		}
 
 		$file = $this->doc_helper->get_referenced_image_file($page_lang, $page, $lang, $path);
-		$info = $file !== false ? @getimagesize($file) : false;
-		if ($info === false || !in_array($info['mime'], array('image/png', 'image/gif', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/x-icon'), true))
+		$info = ($file !== false && is_readable($file) && filesize($file) >= self::MIN_IMAGE_BYTES) ? getimagesize($file) : false;
+		if ($info === false || !in_array($info['mime'], self::IMAGE_MIME_TYPES, true))
 		{
 			throw new http_exception(404, 'DOCUMENTATION_PAGE_NOT_FOUND');
 		}
@@ -302,27 +317,34 @@ class documentation_controller
 	}
 
 	/**
-	 * A guest lacking the required permission is sent to log in (with a
-	 * return URL back to this page) rather than shown a bare 403 — they
-	 * may well have access once signed in. A signed-in user without
-	 * access gets the 403, matching phpBB's usual pattern for restricted
-	 * areas (login_box() vs. SORRY_AUTH_READ).
+	 * A guest lacking the required permission gets phpBB's login box,
+	 * which returns them to this page — they may well have access once
+	 * signed in. A signed-in user without access gets a 403, matching
+	 * phpBB's usual pattern for restricted areas (login_box() vs.
+	 * SORRY_AUTH_READ).
 	 *
-	 * @return \Symfony\Component\HttpFoundation\Response
+	 * @return void Never returns: login_box() ends the request.
+	 * @throws http_exception 403 for a signed-in user.
 	 */
-	protected function access_denied_response()
+	protected function deny_access()
 	{
 		if (empty($this->user->data['is_registered']))
 		{
-			$login_url = append_sid(
-				"{$this->phpbb_root_path}ucp.{$this->php_ext}",
-				'mode=login&redirect=' . urlencode($this->controller_helper->get_current_url())
-			);
-
-			return new RedirectResponse($login_url, 302);
+			$this->show_login_box();
 		}
 
 		throw new http_exception(403, 'DOCUMENTATION_ACCESS_DENIED');
+	}
+
+	/**
+	 * Wrapper around phpBB's login_box(), which renders the login page and
+	 * ends the request, so tests can replace it.
+	 *
+	 * @return void
+	 */
+	protected function show_login_box()
+	{
+		login_box('', $this->language->lang('DOCUMENTATION_LOGIN_EXPLAIN'));
 	}
 
 	/**

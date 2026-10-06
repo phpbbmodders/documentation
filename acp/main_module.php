@@ -188,6 +188,10 @@ class main_module
 					'SECTIONS' => implode(', ', $doc_helper->get_available_sections($lang_code)),
 				));
 			}
+
+			// Only complete now that every language's sections have been read.
+			$ignored = $doc_helper->get_ignored_build_names();
+			$template->assign_var('DOCUMENTATION_IGNORED_NAMES', empty($ignored) ? '' : $language->lang('ACP_DOCUMENTATION_IGNORED_NAMES', implode(', ', $ignored)));
 		}
 	}
 }
