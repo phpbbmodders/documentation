@@ -80,7 +80,9 @@ class ext_test extends TestCase
 			}
 			$container->setParameter('core.root_path', $root);
 			$container->setParameter('core.php_ext', 'php');
-			$extension = new ext($container, $this->createMock(\phpbb\finder::class),
+			// phpBB 4.0 moved the extension finder from \phpbb\finder to \phpbb\finder\finder.
+			$finder_class = class_exists(\phpbb\finder\finder::class) ? \phpbb\finder\finder::class : \phpbb\finder::class;
+			$extension = new ext($container, $this->createMock($finder_class),
 				$this->createMock(\phpbb\db\migrator::class), 'phpbbmodders/documentation', '');
 			$extension->disable_step(false);
 			$this->assertCount(5, $this->rows($db, ACL_OPTIONS_TABLE));
