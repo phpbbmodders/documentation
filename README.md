@@ -13,19 +13,15 @@ Shows the board's Hugo documentation site inside phpBB, styled with the active b
 
 ## Screenshots
 
-A documentation page inside the board, with the language picker and the sidebar:
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/documentation-page.png"><img src="docs/images/documentation-page.png" width="280" alt="A documentation page inside the board"></a><br>A documentation page</td>
+    <td align="center"><a href="docs/images/documentation-search.png"><img src="docs/images/documentation-search.png" width="280" alt="Documentation search results"></a><br>Search results</td>
+    <td align="center"><a href="docs/images/documentation-acp-settings.png"><img src="docs/images/documentation-acp-settings.png" width="280" alt="The Documentation settings page in the ACP"></a><br>ACP settings</td>
+  </tr>
+</table>
 
-![A documentation page inside the board](docs/images/documentation-page.png)
-
-Search results:
-
-![Documentation search results](docs/images/documentation-search.png)
-
-The settings page in the ACP:
-
-![The Documentation settings page in the ACP](docs/images/documentation-acp-settings.png)
-
-More screenshots, including the phone layout and the permissions screen, are on the [Screenshots wiki page](https://github.com/phpbbmodders/documentation/wiki/Screenshots).
+Click a screenshot for the full size. More screenshots, including the phone layout and the permissions screen, are on the [Screenshots wiki page](https://github.com/phpbbmodders/documentation/wiki/Screenshots).
 
 ## Requirements
 
