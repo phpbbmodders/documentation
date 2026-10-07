@@ -340,7 +340,7 @@ class documentation_helper_test extends TestCase
 		$result = $helper->resolve_and_load('da', '');
 		$this->assertStringContainsString('Documentation home', $result['breadcrumb_html']);
 		$this->assertStringNotContainsString('language-switcher', $result['breadcrumb_html']);
-		$this->assertStringContainsString('<i class="icon fa-home fa-fw" aria-hidden="true"></i>Documentation home', $result['breadcrumb_html']);
+		$this->assertStringContainsString('<i class="icon fa-file-text-o fa-fw" aria-hidden="true"></i>Documentation home', $result['breadcrumb_html']);
 		$this->assertStringNotContainsString('⌂', $result['breadcrumb_html']);
 		$this->assertStringNotContainsString('English', $result['breadcrumb_html']);
 		$this->assertSame(array('da' => 'Dansk', 'en' => 'English'), $helper->get_language_labels());
