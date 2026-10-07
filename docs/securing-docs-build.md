@@ -2,7 +2,7 @@
 
 The docs build is the generated Hugo site that `phpbbdocs_hugo.sh` writes
 from `proteus_doc_<lang>.xml`. By default it lives in phpBB's
-`store/phpbbmodders_documentation/` directory.
+`store/docs_build/` directory.
 
 **The build must not be readable directly from the web.** Anyone who could
 browse the raw Hugo pages could read a section or language your Permissions
@@ -50,7 +50,7 @@ phpBB already denies web access to `store/`:
 ## Other locations
 
 A build kept somewhere else under the web root needs its own deny rule.
-The snippets in `contrib/` cover `store/phpbbmodders_documentation/` and the
+The snippets in `contrib/` cover `store/docs_build/` and the
 old default, `ext/phpbbmodders/documentation/docs-build/`; adjust the path
 for any other location:
 
@@ -62,7 +62,7 @@ for any other location:
 The old default directory, `docs-build/` inside the extension, still ships
 with an Apache `.htaccess` that denies all access. Boards upgraded from an
 earlier version keep using it if a build was already there. Move that build
-to `store/phpbbmodders_documentation/` and update the docs build path:
+to `store/docs_build/` and update the docs build path:
 updating the extension replaces its directory and deletes the build.
 
 Each snippet is a drop-in, not a full config file. Merge it into your

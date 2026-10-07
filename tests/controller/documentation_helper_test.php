@@ -866,4 +866,18 @@ class documentation_helper_test extends TestCase
 		$this->assertFalse($helper->is_using_store_fallback());
 		$this->assertFalse($helper->is_build_inside_extension());
 	}
+
+	public function test_previous_store_default_without_a_build_falls_back_to_docs_build()
+	{
+		$board = $this->docs_root . '/board/';
+		mkdir($board . documentation_helper::PREVIOUS_STORE_DOCS_PATH, 0777, true);
+		$this->make_board_build($board, documentation_helper::DEFAULT_DOCS_PATH);
+
+		$helper = $this->get_board_helper($board, documentation_helper::PREVIOUS_STORE_DOCS_PATH);
+
+		$this->assertSame('store/docs_build', documentation_helper::DEFAULT_DOCS_PATH);
+		$this->assertSame(realpath($board . 'store/docs_build'), $helper->get_docs_root());
+		$this->assertTrue($helper->is_using_store_fallback());
+		$this->assertFalse($helper->is_build_inside_extension());
+	}
 }

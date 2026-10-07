@@ -21,15 +21,15 @@ Shows the board's Hugo documentation site inside phpBB, styled with the active b
 1. Copy the extension to `/ext/phpbbmodders/documentation`
 2. In the Administration Control Panel, go to **Customise → Manage extensions**
 3. Enable the **Documentation** extension
-4. Build the documentation into phpBB's `store/phpbbmodders_documentation/` directory:
-   `./phpbbdocs_hugo.sh all /path/to/phpbb/store/phpbbmodders_documentation`
+4. Build the documentation into phpBB's `store/docs_build/` directory:
+   `./phpbbdocs_hugo.sh all /path/to/phpbb/store/docs_build`
    This is the default **docs build path** in the settings, so no further ACP configuration is needed unless the build lives elsewhere. Keeping it outside the extension's own directory means updating the extension doesn't delete it.
 5. Documentation is open to everyone, including guests, by default. Restrict it afterwards through the normal Permissions screens if needed.
 6. **Make sure the build can't be read directly from the web.** phpBB's own deny rules for `store/` cover the default location on Apache, LiteSpeed, and servers set up from phpBB's sample configs. Without a deny rule, the raw pages can be read directly, bypassing the extension's permissions. See [docs/securing-docs-build.md](docs/securing-docs-build.md).
 
 The build's HTML is shown inside the board as-is, so only put a build you trust at the docs build path, in a directory only administrators can write to.
 
-Boards upgraded from an earlier version keep their build at `ext/phpbbmodders/documentation/docs-build/` if one was already there; move it to the new location and update the docs build path to stop the next extension update deleting it. The settings page warns while the build is inside the extension's directory. If the build is moved but the setting isn't updated, the extension reads it from `store/phpbbmodders_documentation/` and the settings page asks for the setting to be updated.
+Boards upgraded from an earlier version keep their build at an earlier default, `ext/phpbbmodders/documentation/docs-build/` or `store/phpbbmodders_documentation/`, if one was already there; boards with nothing there move to `store/docs_build/`. Move a build kept inside the extension's directory, because the next extension update deletes it; the settings page warns while it is there. If a build is moved but the setting isn't updated, the extension reads it from `store/docs_build/` and the settings page asks for the setting to be updated.
 
 If you add a new top-level section or a new language to the docs build later, use the **Resync permissions** button on the settings page.
 
