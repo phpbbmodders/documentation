@@ -44,13 +44,19 @@ class documentation_helper
 	const EVENTS_LIST_PATH = 'development/extensions/events_list';
 
 	/** Default docs build path, relative to the phpBB root. */
-	const DEFAULT_DOCS_PATH = 'store/phpbbmodders_documentation';
+	const DEFAULT_DOCS_PATH = 'store/docs_build';
+
+	/** First default, inside the extension's own directory. */
+	const LEGACY_DOCS_PATH = 'ext/phpbbmodders/documentation/docs-build';
+
+	/** Second default, before the build directory was renamed docs_build. */
+	const PREVIOUS_STORE_DOCS_PATH = 'store/phpbbmodders_documentation';
 
 	/**
-	 * Default before the build moved to store/. Boards still set to it use
-	 * DEFAULT_DOCS_PATH when this has no build but that does.
+	 * Earlier defaults. Boards still set to one of them use
+	 * DEFAULT_DOCS_PATH when theirs has no build but that does.
 	 */
-	const LEGACY_DOCS_PATH = 'ext/phpbbmodders/documentation/docs-build';
+	const PREVIOUS_DOCS_PATHS = array(self::LEGACY_DOCS_PATH, self::PREVIOUS_STORE_DOCS_PATH);
 
 	/** This extension's own directory, relative to the phpBB root. */
 	const EXTENSION_PATH = 'ext/phpbbmodders/documentation';
@@ -180,10 +186,10 @@ class documentation_helper
 
 	/**
 	 * The configured docs path, resolved and existence-checked, but
-	 * without requiring it to be non-empty. A board still set to
-	 * LEGACY_DOCS_PATH with no build there gets DEFAULT_DOCS_PATH instead
-	 * when that has a build, so moving the build to store/ works before
-	 * the setting is updated.
+	 * without requiring it to be non-empty. A board still set to one of
+	 * PREVIOUS_DOCS_PATHS with no build there gets DEFAULT_DOCS_PATH
+	 * instead when that has a build, so moving the build works before the
+	 * setting is updated.
 	 *
 	 * @return string|false
 	 */
@@ -207,7 +213,7 @@ class documentation_helper
 	 */
 	protected function is_store_fallback($configured, $root)
 	{
-		if ($configured !== self::LEGACY_DOCS_PATH || ($root !== false && $this->has_any_language_directory($root)))
+		if (!in_array($configured, self::PREVIOUS_DOCS_PATHS, true) || ($root !== false && $this->has_any_language_directory($root)))
 		{
 			return false;
 		}
@@ -234,8 +240,9 @@ class documentation_helper
 	}
 
 	/**
-	 * Whether the docs build path setting is still the old default but the
-	 * build is read from DEFAULT_DOCS_PATH, so the setting should be updated.
+	 * Whether the docs build path setting is still an earlier default but
+	 * the build is read from DEFAULT_DOCS_PATH, so the setting should be
+	 * updated.
 	 *
 	 * @return bool
 	 */

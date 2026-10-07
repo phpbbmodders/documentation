@@ -169,6 +169,7 @@ class main_module
 			'S_DOCUMENTATION_STORE_FALLBACK' => $doc_helper->is_using_store_fallback(),
 			'S_DOCUMENTATION_BUILD_IN_EXTENSION' => $doc_helper->is_build_inside_extension(),
 			'DOCUMENTATION_DEFAULT_DOCS_PATH' => $doc_helper::DEFAULT_DOCS_PATH,
+			'DOCUMENTATION_CONFIGURED_DOCS_PATH' => (string) $config['phpbbmodders_documentation_docs_path'],
 			'RESYNC_FEEDBACK'             => $resync_feedback,
 
 			'DOCUMENTATION_DOCS_PATH'     => $cfg_array['phpbbmodders_documentation_docs_path'],
