@@ -11,6 +11,22 @@ Shows the board's Hugo documentation site inside phpBB, styled with the active b
 - Per-section and per-language permissions, open to everyone by default.
 - Navigation links in the board header, and **Resync permissions** when new sections or languages are added.
 
+## Screenshots
+
+A documentation page inside the board, with the language picker and the sidebar:
+
+![A documentation page inside the board](docs/images/documentation-page.png)
+
+Search results:
+
+![Documentation search results](docs/images/documentation-search.png)
+
+The settings page in the ACP:
+
+![The Documentation settings page in the ACP](docs/images/documentation-acp-settings.png)
+
+More screenshots, including the phone layout and the permissions screen, are on the [Screenshots wiki page](https://github.com/phpbbmodders/documentation/wiki/Screenshots).
+
 ## Requirements
 
 - phpBB 3.3.19 or a later 3.3 release
