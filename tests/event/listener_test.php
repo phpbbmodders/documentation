@@ -101,7 +101,11 @@ class listener_test extends TestCase
 		});
 
 		$language = $this->createMock(language::class);
-		$language->method('lang')->willReturnCallback(function ($key) {
+		$language->method('lang')->willReturnCallback(function ($key, ...$args) {
+			if (strpos($key, 'ACL_') === 0)
+			{
+				return $key . ':' . implode(',', $args);
+			}
 			return $key === 'DOCUMENTATION_DEV' ? 'Developer Documentation' : 'Documentation';
 		});
 
@@ -125,7 +129,8 @@ class listener_test extends TestCase
 			$controller_helper,
 			$doc_helper,
 			$template,
-			$this->createMock(permission_sync::class)
+			$this->createMock(permission_sync::class),
+			$language
 		);
 	}
 
@@ -261,5 +266,20 @@ class listener_test extends TestCase
 
 		$this->assertStringContainsString('<i class="icon fa-book fa-fw" aria-hidden="true"></i> <span>Documentation</span>', $with_icons);
 		$this->assertStringContainsString('<i class="icon fa-code fa-fw" aria-hidden="true"></i> <span>Developer Documentation</span>', $with_icons);
+	}
+
+	public function test_permission_labels_come_from_the_language_file()
+	{
+		$assigned = array();
+		$listener = $this->make_listener(array(), array(), $assigned);
+		$event = new \phpbb\event\data(array('permissions' => array()));
+
+		$listener->add_permissions($event);
+
+		$this->assertSame(array(
+			'u_phpbbmodders_documentation_lang_en' => array('lang' => 'ACL_U_DOCUMENTATION_LANG:en', 'cat' => 'misc'),
+			'u_phpbbmodders_documentation_development' => array('lang' => 'ACL_U_DOCUMENTATION_SECTION:Development', 'cat' => 'misc'),
+			'u_phpbbmodders_documentation_quickstart' => array('lang' => 'ACL_U_DOCUMENTATION_SECTION:Quickstart', 'cat' => 'misc'),
+		), $event['permissions']);
 	}
 }

@@ -34,6 +34,10 @@ $lang = array_merge($lang, array(
 	'DOCUMENTATION_SEARCH_UNAVAILABLE'     => 'Documentation search is unavailable. Rebuild the documentation to generate its search index.',
 	'DOCUMENTATION_SEARCH_LOADING'         => 'Searching…',
 	'DOCUMENTATION_SEARCH_NEEDS_JS'        => 'Documentation search requires JavaScript.',
+	'DOCUMENTATION_LOGIN_EXPLAIN'          => 'You need to log in to view this documentation.',
+
+	'ACL_U_DOCUMENTATION_LANG'    => 'Documentation: view language “%s”',
+	'ACL_U_DOCUMENTATION_SECTION' => 'Documentation: view section “%s”',
 
 	'NOTIFICATION_DOCUMENTATION_NO_BUILD'      => 'No documentation build was found at the configured path.',
 	'NOTIFICATION_TYPE_DOCUMENTATION_NO_BUILD' => 'Documentation build missing',

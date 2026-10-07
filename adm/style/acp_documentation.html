@@ -23,7 +23,7 @@
 
 {% if RESYNC_FEEDBACK %}
 <div class="successbox">
-	<p>{{ RESYNC_FEEDBACK }}</p>
+	<p>{{ RESYNC_FEEDBACK|e }}</p>
 </div>
 {% endif %}
 
@@ -113,6 +113,12 @@
 {% if S_DOCUMENTATION_BUILD_FOUND %}
 <h1>{{ lang('ACP_DOCUMENTATION_DETECTED') }}</h1>
 
+{% if DOCUMENTATION_IGNORED_NAMES %}
+<div class="errorbox">
+	<p>{{ DOCUMENTATION_IGNORED_NAMES|e }}</p>
+</div>
+{% endif %}
+
 <table cellspacing="1">
 	<thead>
 		<tr>
@@ -123,8 +129,8 @@
 	<tbody>
 		{% for documentation_lang in documentation_lang %}
 		<tr>
-			<td>{{ documentation_lang.CODE }}</td>
-			<td>{{ documentation_lang.SECTIONS }}</td>
+			<td>{{ documentation_lang.CODE|e }}</td>
+			<td>{{ documentation_lang.SECTIONS|e }}</td>
 		</tr>
 		{% endfor %}
 	</tbody>

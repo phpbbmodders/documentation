@@ -1,6 +1,15 @@
 (function () {
 	"use strict";
 
+	// A malformed attribute must not stop the remaining tooltips working.
+	function parseJson(value) {
+		try {
+			return JSON.parse(value || "{}") || {};
+		} catch (error) {
+			return {};
+		}
+	}
+
 	function annotate(node, explanation) {
 		var term = document.createElement("span");
 		term.className = "documentation-tooltip-term";
@@ -11,8 +20,8 @@
 	}
 
 	document.querySelectorAll("[data-doc-abbreviations]").forEach(function (article) {
-		var definitions = JSON.parse(article.dataset.docAbbreviations);
-		var headings = JSON.parse(article.dataset.docEventHeadings || "{}");
+		var definitions = parseJson(article.dataset.docAbbreviations);
+		var headings = parseJson(article.dataset.docEventHeadings);
 		var seen = Object.create(null);
 		var walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
 		var nodes = [];
@@ -27,7 +36,9 @@
 			var offset = 0;
 			var match;
 			while ((match = pattern.exec(node.textContent))) {
-				if (seen[match[0]] || !definitions[match[0]]) continue;
+				if (seen[match[0]] || !definitions[match[0]]) {
+					continue;
+				}
 				seen[match[0]] = true;
 				fragment.appendChild(document.createTextNode(node.textContent.slice(offset, match.index)));
 				var text = document.createTextNode(match[0]);
@@ -50,10 +61,16 @@
 		});
 		article.querySelectorAll("img[alt]").forEach(function (image) {
 			var description = image.getAttribute("alt").trim();
-			if (!description) return;
+			if (!description) {
+				return;
+			}
 			var target = image.closest("a") || image;
-			if (!target.dataset.docTooltip) target.dataset.docTooltip = description;
-			if (target === image) target.tabIndex = 0;
+			if (!target.dataset.docTooltip) {
+				target.dataset.docTooltip = description;
+			}
+			if (target === image) {
+				target.tabIndex = 0;
+			}
 			target.classList.add("documentation-tooltip-image");
 		});
 	});
@@ -73,8 +90,11 @@
 			var ids = (active.getAttribute("aria-describedby") || "").split(/\s+/).filter(function (id) {
 				return id && id !== popup.id;
 			});
-			if (ids.length) active.setAttribute("aria-describedby", ids.join(" "));
-			else active.removeAttribute("aria-describedby");
+			if (ids.length) {
+				active.setAttribute("aria-describedby", ids.join(" "));
+			} else {
+				active.removeAttribute("aria-describedby");
+			}
 		}
 		active = null;
 		popup.hidden = true;
@@ -90,14 +110,18 @@
 		var rect = target.getBoundingClientRect();
 		var left = Math.max(12, Math.min(rect.left, window.innerWidth - popup.offsetWidth - 12));
 		var top = rect.bottom + 6;
-		if (top + popup.offsetHeight > window.innerHeight - 12) top = Math.max(12, rect.top - popup.offsetHeight - 6);
+		if (top + popup.offsetHeight > window.innerHeight - 12) {
+			top = Math.max(12, rect.top - popup.offsetHeight - 6);
+		}
 		popup.style.left = left + "px";
 		popup.style.top = top + "px";
 	}
 
 	function scheduleHide() {
 		timer = setTimeout(function () {
-			if (active !== document.activeElement) hide();
+			if (active !== document.activeElement) {
+				hide();
+			}
 		}, 150);
 	}
 
@@ -110,9 +134,15 @@
 	});
 	popup.addEventListener("mouseenter", function () { clearTimeout(timer); });
 	popup.addEventListener("mouseleave", scheduleHide);
-	document.addEventListener("keydown", function (event) { if (event.key === "Escape") hide(); });
+	document.addEventListener("keydown", function (event) {
+		if (event.key === "Escape") {
+			hide();
+		}
+	});
 	document.addEventListener("click", function (event) {
-		if (!event.target.closest("[data-doc-tooltip], .documentation-tooltip-popup")) hide();
+		if (!event.target.closest("[data-doc-tooltip], .documentation-tooltip-popup")) {
+			hide();
+		}
 	});
 	window.addEventListener("resize", hide);
 	document.addEventListener("scroll", hide, true);

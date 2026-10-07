@@ -45,7 +45,7 @@ class no_docs_build extends \phpbb\notification\type\base
 	/**
 	 * {@inheritdoc}
 	 */
-	static public $notification_option = array(
+	public static $notification_option = array(
 		'lang'  => 'NOTIFICATION_TYPE_DOCUMENTATION_NO_BUILD',
 		'group' => 'NOTIFICATION_GROUP_ADMINISTRATION',
 	);
@@ -64,7 +64,7 @@ class no_docs_build extends \phpbb\notification\type\base
 	 *
 	 * {@inheritdoc}
 	 */
-	static public function get_item_id($type_data)
+	public static function get_item_id($type_data)
 	{
 		return 1;
 	}
@@ -72,7 +72,7 @@ class no_docs_build extends \phpbb\notification\type\base
 	/**
 	 * {@inheritdoc}
 	 */
-	static public function get_item_parent_id($type_data)
+	public static function get_item_parent_id($type_data)
 	{
 		return 0;
 	}
@@ -153,7 +153,7 @@ class no_docs_build extends \phpbb\notification\type\base
 	 */
 	public function get_url()
 	{
-		return append_sid("{$this->phpbb_root_path}adm/index.{$this->php_ext}", 'i=-phpbbmodders-documentation-acp-main_module&mode=settings');
+		return append_sid("{$this->phpbb_root_path}adm/index.{$this->php_ext}", 'i=-phpbbmodders-documentation-acp-main_module&amp;mode=settings');
 	}
 
 	/**

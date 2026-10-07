@@ -35,12 +35,14 @@ class documentation_image_test extends TestCase
 			mkdir($this->root . '/' . $lang . '/images');
 			file_put_contents($this->root . '/' . $lang . '/index.html', '<article class="docs-article">Home</article>');
 			file_put_contents($this->root . '/' . $lang . '/quickstart/index.html', '<article class="docs-article">Section</article>');
-			file_put_contents($this->root . '/' . $lang . '/quickstart/install/index.html', '<article class="docs-article"><img src="../../images/referenced.png?v=1#image"><img src="../../images/nonimage.png"></article>');
+			file_put_contents($this->root . '/' . $lang . '/quickstart/install/index.html', '<article class="docs-article"><img src="../../images/referenced.png?v=1#image"><img src="../../images/nonimage.png"><img src="../../images/tiny.png"></article>');
 		}
 		$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=');
 		file_put_contents($this->root . '/en/images/referenced.png', $png);
 		file_put_contents($this->root . '/en/images/private.png', $png);
 		file_put_contents($this->root . '/en/images/nonimage.png', '<script>not an image</script>');
+		// Short enough that getimagesize() itself would raise a notice.
+		file_put_contents($this->root . '/en/images/tiny.png', "\x89PNG");
 		file_put_contents($this->root . '/outside.png', $png);
 		symlink($this->root . '/outside.png', $this->root . '/en/images/escape.png');
 	}
@@ -75,7 +77,7 @@ class documentation_image_test extends TestCase
 		$user = $this->createMock(user::class);
 		$routes = $this->createMock(controller_helper::class);
 		$helper = new documentation_helper($config, $this->createMock(language::class), $request, $user, '', $routes);
-		return new documentation_controller($auth, $config, $routes, $this->createMock(template::class), $user, $helper, '', 'php', $request);
+		return new documentation_controller($auth, $config, $routes, $this->createMock(template::class), $user, $helper, $request, $this->createMock(language::class));
 	}
 
 	public function test_referenced_image_returns_binary_bytes_and_private_headers()
@@ -121,6 +123,7 @@ class documentation_image_test extends TestCase
 			'unreferenced image' => array('en', 'images/private.png', array(), array(), array(), 404),
 			'missing image' => array('en', 'images/missing.png', array(), array(), array(), 404),
 			'nonimage content' => array('en', 'images/nonimage.png', array(), array(), array(), 404),
+			'too short to be an image' => array('en', 'images/tiny.png', array(), array(), array(), 404),
 			'unknown language' => array('fr', 'images/referenced.png', array(), array(), array(), 404),
 			'image traversal' => array('en', 'images/../../outside.png', array(), array(), array(), 404),
 			'page traversal' => array('en', 'images/referenced.png', array('page' => 'quickstart/../../da/quickstart/install'), array(), array(), 404),

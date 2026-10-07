@@ -657,4 +657,61 @@ class documentation_helper_test extends TestCase
 		);
 		$this->assertSame('da', $helper_with_override->resolve_default_language());
 	}
+
+	public function test_unusable_directory_names_are_skipped_and_reported()
+	{
+		// Too long for auth_option (29-character prefix + 23 = 52), not
+		// lowercase, or colliding with a language permission.
+		$this->make_page('en', 'a_section_name_too_long');
+		$this->make_page('en', 'Upper');
+		$this->make_page('en', 'lang_da');
+		$this->make_page('en', 'a_section_exactly_21c');
+		$this->make_page('Fr', '');
+
+		$helper = $this->get_helper();
+
+		$this->assertSame(array('da', 'en'), $helper->get_available_languages());
+		$this->assertSame(array('a_section_exactly_21c', 'quickstart'), $helper->get_available_sections('en'));
+		$this->assertSame(array('Fr', 'en/Upper', 'en/a_section_name_too_long', 'en/lang_da'), $helper->get_ignored_build_names());
+		$this->assertFalse($helper->get_content_file('Fr', ''));
+	}
+
+	public function test_language_cookie_uses_the_boards_cookie_settings()
+	{
+		$user = $this->get_user();
+		$user->expects($this->once())->method('set_cookie')
+			->with('docs_lang', 'da', $this->greaterThan(time() + documentation_helper::COOKIE_LIFETIME - 60));
+		$request = $this->get_request();
+		$request->expects($this->once())->method('overwrite')
+			->with('phpbb3_docs_lang', 'da', request_interface::COOKIE);
+		$helper = new documentation_helper(
+			$this->get_config(array('cookie_name' => 'phpbb3')),
+			$this->createMock(language::class),
+			$request,
+			$user,
+			'',
+			$this->get_controller_helper()
+		);
+
+		$helper->set_language_cookie('da');
+	}
+
+	public function test_resolve_default_language_reads_the_prefixed_cookie()
+	{
+		$request = $this->createMock(request_interface::class);
+		$request->method('variable')->willReturnCallback(function ($name, $default) {
+			return $name === 'phpbb3_docs_lang' ? 'da' : $default;
+		});
+		$request->method('header')->willReturn('');
+		$helper = new documentation_helper(
+			$this->get_config(array('cookie_name' => 'phpbb3')),
+			$this->createMock(language::class),
+			$request,
+			$this->get_user(),
+			'',
+			$this->get_controller_helper()
+		);
+
+		$this->assertSame('da', $helper->resolve_default_language());
+	}
 }

@@ -18,9 +18,8 @@ services:
             - '@template'
             - '@user'
             - '@phpbbmodders.documentation.helper'
-            - '%core.root_path%'
-            - '%core.php_ext%'
             - '@request'
+            - '@language'
 
     phpbbmodders.documentation.listener:
         class: phpbbmodders\documentation\event\listener
@@ -31,6 +30,7 @@ services:
             - '@phpbbmodders.documentation.helper'
             - '@template'
             - '@phpbbmodders.documentation.permission_sync'
+            - '@language'
         tags:
             - { name: event.listener }
 

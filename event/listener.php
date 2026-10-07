@@ -13,7 +13,9 @@ namespace phpbbmodders\documentation\event;
 use phpbb\auth\auth;
 use phpbb\config\config;
 use phpbb\controller\helper as controller_helper;
+use phpbb\language\language;
 use phpbb\template\template;
+use phpbbmodders\documentation\acp\permission_sync;
 use phpbbmodders\documentation\controller\documentation_helper;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -26,8 +28,8 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
  * hides it; its documentation stays reachable by URL for anyone with the
  * underlying permissions. The master "enabled" setting is the one
  * exception: turning that off takes the documentation offline entirely,
- * hiding both links and returning 503 from both routes (see
- * documentation_controller).
+ * hiding both links and returning 503 from every documentation route
+ * (see documentation_controller).
  */
 class listener implements EventSubscriberInterface
 {
@@ -46,10 +48,13 @@ class listener implements EventSubscriberInterface
 	/** @var template */
 	protected $template;
 
-	/** @var \phpbbmodders\documentation\acp\permission_sync */
+	/** @var permission_sync */
 	protected $permission_sync;
 
-	public function __construct(auth $auth, config $config, controller_helper $controller_helper, documentation_helper $doc_helper, template $template, \phpbbmodders\documentation\acp\permission_sync $permission_sync)
+	/** @var language */
+	protected $language;
+
+	public function __construct(auth $auth, config $config, controller_helper $controller_helper, documentation_helper $doc_helper, template $template, permission_sync $permission_sync, language $language)
 	{
 		$this->auth = $auth;
 		$this->config = $config;
@@ -57,6 +62,7 @@ class listener implements EventSubscriberInterface
 		$this->doc_helper = $doc_helper;
 		$this->template = $template;
 		$this->permission_sync = $permission_sync;
+		$this->language = $language;
 	}
 
 	/**
@@ -105,10 +111,10 @@ class listener implements EventSubscriberInterface
 	 * Registers a readable label for each currently-known section/language
 	 * permission on the ACP Permissions screen. The permission set is
 	 * dynamic (whatever sections/languages the docs build actually has),
-	 * so unlike a normal extension's fixed ACL_* language keys, these
-	 * labels are built at runtime and passed straight through as the
+	 * so there is no fixed ACL_* key per permission. Each label is
+	 * formatted here from a language string and passed through as the
 	 * 'lang' value — phpBB's lang() falls back to echoing an unresolved
-	 * key verbatim, so a plain label works the same as a real key.
+	 * key verbatim, so the formatted text is shown as-is.
 	 *
 	 * @param \phpbb\event\data $event
 	 * @return void
@@ -118,14 +124,14 @@ class listener implements EventSubscriberInterface
 		foreach ($this->doc_helper->get_available_languages() as $lang)
 		{
 			$event->update_subarray('permissions', 'u_phpbbmodders_documentation_lang_' . $lang, array(
-				'lang' => 'Documentation: view language "' . $lang . '"',
+				'lang' => $this->language->lang('ACL_U_DOCUMENTATION_LANG', $lang),
 				'cat'  => 'misc',
 			));
 
 			foreach ($this->doc_helper->get_available_sections($lang) as $section)
 			{
 				$event->update_subarray('permissions', 'u_phpbbmodders_documentation_' . $section, array(
-					'lang' => 'Documentation: view section "' . ucwords(str_replace(array('-', '_'), ' ', $section)) . '"',
+					'lang' => $this->language->lang('ACL_U_DOCUMENTATION_SECTION', ucwords(str_replace(array('-', '_'), ' ', $section))),
 					'cat'  => 'misc',
 				));
 			}

@@ -46,7 +46,6 @@ class permission_sync
 	const DEFAULT_GRANTED_ROLES = array('ROLE_USER_FULL', 'ROLE_USER_STANDARD');
 	const DEFAULT_GRANTED_GROUPS = array('GUESTS', 'BOTS');
 
-
 	/** @var driver_interface */
 	protected $db;
 

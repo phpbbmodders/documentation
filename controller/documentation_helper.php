@@ -22,7 +22,26 @@ use phpbb\user;
  */
 class documentation_helper
 {
-	const COOKIE_NAME = 'phpbb_docs_lang';
+	/** Cookie name, prefixed with the board's cookie name by \phpbb\user::set_cookie(). */
+	const COOKIE_NAME = 'docs_lang';
+
+	/** How long the language choice is remembered, in seconds (one year). */
+	const COOKIE_LIFETIME = 31536000;
+
+	/** ACL option prefix for section permissions. */
+	const PERMISSION_PREFIX = 'u_phpbbmodders_documentation_';
+
+	/** ACL option prefix for language permissions. */
+	const LANG_PERMISSION_PREFIX = 'u_phpbbmodders_documentation_lang_';
+
+	/** Length of phpBB's acl_options.auth_option column. */
+	const AUTH_OPTION_MAX_LENGTH = 50;
+
+	/** Characters a language or section directory name may use. */
+	const BUILD_NAME_PATTERN = '/\A[a-z0-9][a-z0-9_-]*\z/';
+
+	/** Page whose wide tables get wrapped in a horizontally scrollable region. */
+	const EVENTS_LIST_PATH = 'development/extensions/events_list';
 
 	/**
 	 * The one top-level section name the developer docs build produces
@@ -85,6 +104,15 @@ class documentation_helper
 	/** @var array|null cached list of language codes present in the build */
 	protected $available_languages;
 
+	/** @var array cached section lists, keyed by language code */
+	protected $available_sections = array();
+
+	/** @var array configured docs path => resolved docs root (or false) */
+	protected $docs_roots = array();
+
+	/** @var array build directory names skipped by is_usable_build_name() */
+	protected $ignored_build_names = array();
+
 	public function __construct(config $config, language $language, request_interface $request, user $user, $phpbb_root_path, controller_helper $controller_helper)
 	{
 		$this->config = $config;
@@ -98,8 +126,8 @@ class documentation_helper
 	/**
 	 * Absolute filesystem path to the Hugo build's public/ directory —
 	 * only if it actually contains a build. A configured path that
-	 * exists but is empty (e.g. docs-build/ before proteus_hugo.sh has
-	 * ever run) is treated the same as "not found": every caller of this
+	 * exists but is empty (e.g. before the Hugo build has ever been
+	 * written to it) is treated the same as "not found": every caller of this
 	 * method uses it to decide whether documentation is usable at all,
 	 * and an existing-but-empty directory isn't.
 	 *
@@ -107,9 +135,14 @@ class documentation_helper
 	 */
 	public function get_docs_root()
 	{
-		$root = $this->resolve_configured_root();
+		$configured = (string) $this->config['phpbbmodders_documentation_docs_path'];
+		if (!array_key_exists($configured, $this->docs_roots))
+		{
+			$root = $this->resolve_configured_root();
+			$this->docs_roots[$configured] = ($root !== false && $this->has_any_language_directory($root)) ? $root : false;
+		}
 
-		return ($root !== false && $this->has_any_language_directory($root)) ? $root : false;
+		return $this->docs_roots[$configured];
 	}
 
 	/**
@@ -176,9 +209,18 @@ class documentation_helper
 				continue;
 			}
 
-			if (is_file($entry->getPathname() . '/index.html'))
+			if (!is_file($entry->getPathname() . '/index.html'))
+			{
+				continue;
+			}
+
+			if ($this->is_usable_build_name($entry->getFilename(), self::LANG_PERMISSION_PREFIX))
 			{
 				$this->available_languages[] = $entry->getFilename();
+			}
+			else
+			{
+				$this->ignored_build_names[$entry->getFilename()] = true;
 			}
 		}
 
@@ -196,36 +238,76 @@ class documentation_helper
 	 */
 	public function get_available_sections($lang)
 	{
-		$sections = array();
-
 		$root = $this->get_docs_root();
 		if ($root === false || !$this->is_known_language($lang))
 		{
-			return $sections;
+			return array();
 		}
 
+		if (isset($this->available_sections[$lang]))
+		{
+			return $this->available_sections[$lang];
+		}
+
+		$sections = array();
 		$lang_dir = $root . '/' . $lang;
-		if (!is_dir($lang_dir))
+		if (is_dir($lang_dir))
 		{
-			return $sections;
-		}
-
-		foreach (new \DirectoryIterator($lang_dir) as $entry)
-		{
-			if ($entry->isDot() || !$entry->isDir() || $entry->getFilename() === 'images')
+			foreach (new \DirectoryIterator($lang_dir) as $entry)
 			{
-				continue;
-			}
+				if ($entry->isDot() || !$entry->isDir() || $entry->getFilename() === 'images'
+					|| !is_file($entry->getPathname() . '/index.html'))
+				{
+					continue;
+				}
 
-			if (is_file($entry->getPathname() . '/index.html'))
-			{
-				$sections[] = $entry->getFilename();
+				// A section named lang_<x> would share its ACL option with
+				// the permission for language <x>.
+				$name = $entry->getFilename();
+				if (strpos($name, 'lang_') === 0 || !$this->is_usable_build_name($name, self::PERMISSION_PREFIX))
+				{
+					$this->ignored_build_names[$lang . '/' . $name] = true;
+					continue;
+				}
+
+				$sections[] = $name;
 			}
 		}
 
 		sort($sections);
+		$this->available_sections[$lang] = $sections;
 
 		return $sections;
+	}
+
+	/**
+	 * Whether a build directory name can become part of an ACL option:
+	 * lowercase letters, digits, "_" and "-" only, and short enough that
+	 * $prefix . $name fits phpBB's auth_option column.
+	 *
+	 * @param string $name
+	 * @param string $prefix
+	 * @return bool
+	 */
+	protected function is_usable_build_name($name, $prefix)
+	{
+		return preg_match(self::BUILD_NAME_PATTERN, $name)
+			&& strlen($prefix . $name) <= self::AUTH_OPTION_MAX_LENGTH;
+	}
+
+	/**
+	 * Build directories skipped because their names can't be used as
+	 * permission names. Only complete after get_available_languages() and
+	 * get_available_sections() have run for every language.
+	 *
+	 * @return array Directory names, relative to the docs root.
+	 */
+	public function get_ignored_build_names()
+	{
+		$names = array_keys($this->ignored_build_names);
+		sort($names);
+
+		return $names;
 	}
 
 	/**
@@ -329,7 +411,7 @@ class documentation_helper
 	 */
 	public function resolve_default_language()
 	{
-		$cookie_lang = $this->request->variable(self::COOKIE_NAME, '', true, \phpbb\request\request_interface::COOKIE);
+		$cookie_lang = $this->request->variable($this->get_cookie_name(), '', true, \phpbb\request\request_interface::COOKIE);
 		if ($this->is_known_language($cookie_lang))
 		{
 			return $cookie_lang;
@@ -539,8 +621,19 @@ class documentation_helper
 	 */
 	public function set_language_cookie($lang)
 	{
-		$this->request->overwrite(self::COOKIE_NAME, $lang, \phpbb\request\request_interface::COOKIE);
-		setcookie(self::COOKIE_NAME, $lang, time() + 60 * 60 * 24 * 365, '/');
+		$this->request->overwrite($this->get_cookie_name(), $lang, \phpbb\request\request_interface::COOKIE);
+		$this->user->set_cookie(self::COOKIE_NAME, $lang, time() + self::COOKIE_LIFETIME);
+	}
+
+	/**
+	 * Full name of the language cookie, as \phpbb\user::set_cookie()
+	 * writes it: the board's cookie name, "_", then COOKIE_NAME.
+	 *
+	 * @return string
+	 */
+	protected function get_cookie_name()
+	{
+		return $this->config['cookie_name'] . '_' . self::COOKIE_NAME;
 	}
 
 	/**
@@ -748,7 +841,7 @@ class documentation_helper
 	 * @param bool $allow_fallback False when the caller already authorized the selected language.
 	 * @return array|false ['lang', 'used_fallback', 'title', 'breadcrumb_html', 'sidebar_html', 'article_html']
 	 */
-	public function resolve_and_load($lang, $path, array $allowed_sections = null, $allow_fallback = true)
+	public function resolve_and_load($lang, $path, ?array $allowed_sections = null, $allow_fallback = true)
 	{
 		$file = $this->get_content_file($lang, $path);
 		$used_fallback = false;
@@ -795,7 +888,7 @@ class documentation_helper
 	 * @param array|null $allowed_sections Sections to keep in the sidebar; null skips filtering.
 	 * @return array|false ['title', 'breadcrumb_html', 'sidebar_html', 'article_html']
 	 */
-	protected function extract_fragments($file, $lang, $path, array $allowed_sections = null)
+	protected function extract_fragments($file, $lang, $path, ?array $allowed_sections = null)
 	{
 		$dom = new \DOMDocument();
 		libxml_use_internal_errors(true);
@@ -820,7 +913,7 @@ class documentation_helper
 			return false;
 		}
 
-		if (trim($path, '/') === 'development/extensions/events_list')
+		if (trim($path, '/') === self::EVENTS_LIST_PATH)
 		{
 			foreach (iterator_to_array($article_node->getElementsByTagName('table')) as $table)
 			{
