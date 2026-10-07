@@ -24,6 +24,9 @@ class documentation_helper
 {
 	const COOKIE_NAME = 'phpbb_docs_lang';
 
+	/** Character Hugo's breadcrumb puts before its home link. */
+	const HUGO_HOME_GLYPH = '⌂';
+
 	/**
 	 * The one top-level section name the developer docs build produces
 	 * (see phpbbdocs_hugo_devdocs.sh) — the sole boundary between
@@ -858,6 +861,7 @@ class documentation_helper
 			{
 				$switcher->parentNode->removeChild($switcher);
 			}
+			$this->use_board_home_icon($breadcrumb_node);
 			$this->rewrite_absolute_links($breadcrumb_node);
 		}
 		$this->process_images($article_node, $lang, $path);
@@ -869,6 +873,30 @@ class documentation_helper
 			'sidebar_html'    => $sidebar_node !== null ? $this->outer_html($sidebar_node) : '',
 			'article_html'    => $this->inner_html($article_node),
 		);
+	}
+
+	/**
+	 * Replaces the "⌂" character Hugo puts before the breadcrumb's home
+	 * link with the Font Awesome home icon the board's own breadcrumb
+	 * uses, so both lines look the same.
+	 *
+	 * @param \DOMNode $breadcrumb_node
+	 * @return void
+	 */
+	protected function use_board_home_icon(\DOMNode $breadcrumb_node)
+	{
+		$xpath = new \DOMXPath($breadcrumb_node->ownerDocument);
+		$text = $xpath->query('.//a[1]/text()[1]', $breadcrumb_node)->item(0);
+		if ($text === null || strpos(ltrim($text->nodeValue), self::HUGO_HOME_GLYPH) !== 0)
+		{
+			return;
+		}
+
+		$text->nodeValue = ltrim(substr(ltrim($text->nodeValue), strlen(self::HUGO_HOME_GLYPH)));
+		$icon = $breadcrumb_node->ownerDocument->createElement('i');
+		$icon->setAttribute('class', 'icon fa-home fa-fw');
+		$icon->setAttribute('aria-hidden', 'true');
+		$text->parentNode->insertBefore($icon, $text);
 	}
 
 	/**

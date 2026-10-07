@@ -9,6 +9,11 @@
 	font-size: 1.1em;
 }
 
+/* Bold like the board's breadcrumb links; the language picker keeps bold for the current language only. */
+.documentation-breadcrumb .utility-bar {
+	font-weight: bold;
+}
+
 .documentation-language-picker a {
 	margin-left: 8px;
 }

@@ -331,14 +331,17 @@ class documentation_helper_test extends TestCase
 
 	public function test_imported_language_switcher_is_removed_but_labels_remain_available()
 	{
-		file_put_contents($this->docs_root . '/da/index.html', '<html><body>
-			<div class="utility-bar"><a href="/da/">Documentation home</a>
+		// Hugo pages declare UTF-8, which DOMDocument needs to read the ⌂ correctly.
+		file_put_contents($this->docs_root . '/da/index.html', '<html><head><meta charset="utf-8"></head><body>
+			<div class="utility-bar"><a href="/da/">⌂ Documentation home</a>
 			<div class="language-switcher"><a href="/da/" lang="da">Dansk</a><a href="/en/" lang="en">English</a></div></div>
 			<article class="docs-article">Article</article></body></html>');
 		$helper = $this->get_helper();
 		$result = $helper->resolve_and_load('da', '');
 		$this->assertStringContainsString('Documentation home', $result['breadcrumb_html']);
 		$this->assertStringNotContainsString('language-switcher', $result['breadcrumb_html']);
+		$this->assertStringContainsString('<i class="icon fa-home fa-fw" aria-hidden="true"></i>Documentation home', $result['breadcrumb_html']);
+		$this->assertStringNotContainsString('⌂', $result['breadcrumb_html']);
 		$this->assertStringNotContainsString('English', $result['breadcrumb_html']);
 		$this->assertSame(array('da' => 'Dansk', 'en' => 'English'), $helper->get_language_labels());
 	}
