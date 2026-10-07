@@ -86,6 +86,21 @@ class documentation_helper
 	/** Upper limit of the ACP search cache time, in minutes (24 hours). */
 	const SEARCH_CACHE_MAX_MINUTES = 1440;
 
+	/** Search result limit: default, and the range the ACP accepts. */
+	const SEARCH_RESULTS_DEFAULT = 50;
+	const SEARCH_RESULTS_MIN = 10;
+	const SEARCH_RESULTS_MAX = 200;
+
+	/** Server-side search index file written by Hugo in each top-level section. */
+	const SEARCH_INDEX_FILE = 'search-index.json';
+
+	/** Largest search index file read, so one oversized file can't exhaust PHP's memory. */
+	const SEARCH_INDEX_MAX_BYTES = 16777216;
+
+	/** Characters of page text shown before the first match in an excerpt, and the excerpt length. */
+	const SEARCH_EXCERPT_LEAD = 60;
+	const SEARCH_EXCERPT_LENGTH = 240;
+
 	/** @var config */
 	protected $config;
 
@@ -770,6 +785,170 @@ class documentation_helper
 
 		return $minutes > 0 && in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), self::SEARCH_BUNDLE_CACHEABLE, true)
 			? 'private, max-age=' . ($minutes * 60) : 'private, no-store';
+	}
+
+	/**
+	 * The ACP search result limit, clamped to SEARCH_RESULTS_MIN..MAX.
+	 *
+	 * @return int
+	 */
+	public function get_search_max_results()
+	{
+		if (!isset($this->config['phpbbmodders_documentation_search_max_results']))
+		{
+			return self::SEARCH_RESULTS_DEFAULT;
+		}
+
+		return min(max((int) $this->config['phpbbmodders_documentation_search_max_results'], self::SEARCH_RESULTS_MIN), self::SEARCH_RESULTS_MAX);
+	}
+
+	/**
+	 * Resolves a section's server-side search index, containment checked
+	 * against <docs_root>/<lang>/<section>/. Callers must check the user's
+	 * language and section permissions first.
+	 *
+	 * @param string $lang
+	 * @param string $section
+	 * @return string|false
+	 */
+	public function get_search_index_file($lang, $section)
+	{
+		if (!in_array($section, $this->get_available_sections($lang), true))
+		{
+			return false;
+		}
+
+		$root = $this->get_docs_root();
+		$section_root = realpath($root . '/' . $lang . '/' . $section);
+		$file = realpath($root . '/' . $lang . '/' . $section . '/' . self::SEARCH_INDEX_FILE);
+
+		return $section_root !== false && strpos($section_root, $root . DIRECTORY_SEPARATOR . $lang . DIRECTORY_SEPARATOR) === 0
+			&& $file !== false && is_file($file) && strpos($file, $section_root . DIRECTORY_SEPARATOR) === 0
+			&& filesize($file) <= self::SEARCH_INDEX_MAX_BYTES
+			? $file : false;
+	}
+
+	/**
+	 * Sections of $lang, limited to $allowed_sections, that have a
+	 * server-side search index.
+	 *
+	 * @param string $lang
+	 * @param array $allowed_sections Sections the current user may read.
+	 * @return array Section slugs, in $allowed_sections order.
+	 */
+	public function get_search_index_sections($lang, array $allowed_sections)
+	{
+		$sections = array();
+		foreach ($allowed_sections as $section)
+		{
+			if ($this->get_search_index_file($lang, $section) !== false)
+			{
+				$sections[] = $section;
+			}
+		}
+
+		return $sections;
+	}
+
+	/**
+	 * Server-side search for visitors without JavaScript. Every word of
+	 * $query must appear in a page's title or text; pages with more title
+	 * matches come first, then by title.
+	 *
+	 * @param string $lang
+	 * @param string $query
+	 * @param array $sections Sections to search; the caller has checked the user may read them.
+	 * @param int $limit Most results returned.
+	 * @return array Each ['title', 'excerpt', 'url'], url being a phpBB route.
+	 */
+	public function search_pages($lang, $query, array $sections, $limit)
+	{
+		$terms = preg_split('/\s+/u', mb_strtolower(trim($query)), -1, PREG_SPLIT_NO_EMPTY);
+		if (empty($terms))
+		{
+			return array();
+		}
+
+		$results = array();
+		foreach ($sections as $section)
+		{
+			$file = $this->get_search_index_file($lang, $section);
+			$pages = $file !== false ? json_decode(file_get_contents($file), true) : null;
+			if (!is_array($pages))
+			{
+				continue;
+			}
+
+			$prefix = '/' . $lang . '/' . $section . '/';
+			foreach ($pages as $page)
+			{
+				if (!is_array($page) || !isset($page['url'], $page['title'], $page['text'])
+					|| !is_string($page['url']) || !is_string($page['title']) || !is_string($page['text'])
+					|| strpos($page['url'], $prefix) !== 0)
+				{
+					continue;
+				}
+
+				$result = $this->match_page($page, $terms);
+				$path = trim(substr($page['url'], strlen('/' . $lang . '/')), '/');
+				if ($result === false || $this->get_content_file($lang, $path) === false)
+				{
+					continue;
+				}
+
+				$result['url'] = $this->controller_helper->route('phpbbmodders_documentation_page', array('lang' => $lang, 'path' => $path));
+				$results[] = $result;
+			}
+		}
+
+		usort($results, function ($a, $b) {
+			return $b['score'] <=> $a['score'] ?: strcmp($a['title'], $b['title']);
+		});
+
+		return array_map(function ($result) {
+			unset($result['score']);
+			return $result;
+		}, array_slice($results, 0, $limit));
+	}
+
+	/**
+	 * @param array $page One search index entry.
+	 * @param array $terms Lowercase search words.
+	 * @return array|false ['title', 'excerpt', 'score'], or false if a word is missing.
+	 */
+	protected function match_page(array $page, array $terms)
+	{
+		$text = trim(preg_replace('/\s+/u', ' ', html_entity_decode($page['text'], ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+		$title = html_entity_decode($page['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$title_lower = mb_strtolower($title);
+		$text_lower = mb_strtolower($text);
+		$score = 0;
+		$position = null;
+
+		foreach ($terms as $term)
+		{
+			$in_title = mb_strpos($title_lower, $term) !== false;
+			$in_text = mb_strpos($text_lower, $term);
+			if (!$in_title && $in_text === false)
+			{
+				return false;
+			}
+
+			$score += $in_title ? 2 : 1;
+			if ($in_text !== false && ($position === null || $in_text < $position))
+			{
+				$position = $in_text;
+			}
+		}
+
+		$start = max(0, (int) $position - self::SEARCH_EXCERPT_LEAD);
+		$excerpt = ($start > 0 ? '…' : '') . mb_substr($text, $start, self::SEARCH_EXCERPT_LENGTH);
+		if (mb_strlen($text) > $start + self::SEARCH_EXCERPT_LENGTH)
+		{
+			$excerpt .= '…';
+		}
+
+		return array('title' => $title, 'excerpt' => $excerpt, 'score' => $score);
 	}
 
 	/** @return string|false An image contained in its own language build. */

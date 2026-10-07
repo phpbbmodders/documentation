@@ -1,6 +1,12 @@
 (function () {
 	"use strict";
 
+	// Tell the search page this browser runs scripts, so it leaves the
+	// search to Pagefind instead of also searching on the server.
+	document.querySelectorAll(".documentation-search-form input[name=js]").forEach(function (input) {
+		input.value = "1";
+	});
+
 	document.querySelectorAll(".docs-filter").forEach(function (input) {
 		input.addEventListener("input", function () {
 			var query = input.value.trim().toLowerCase();

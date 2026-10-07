@@ -19,11 +19,19 @@
  *                             prefix becomes template with placeholder
  *                             replaced by the rest of the URL (used to map
  *                             Hugo paths to phpBB routes).
+ *   data-doc-search-max-results  Optional number of results to show,
+ *                             10-200; defaults to 50.
+ *
+ * A child element carrying data-doc-search-fallback holds results the
+ * server already rendered. It stays when Pagefind can't run and is
+ * replaced once Pagefind's results arrive.
  */
 (function () {
 	"use strict";
 
-	var MAX_RESULTS = 50;
+	var DEFAULT_MAX_RESULTS = 50;
+	var MIN_MAX_RESULTS = 10;
+	var MAX_MAX_RESULTS = 200;
 	var panel = document.querySelector("[data-doc-search]");
 
 	if (!panel) {
@@ -43,6 +51,12 @@
 	var links = readJson("data-doc-search-links", null);
 	var query = panel.getAttribute("data-doc-search-query");
 	var baseUrl = panel.getAttribute("data-doc-search-base-url") || "/";
+	var maxResults = parseInt(panel.getAttribute("data-doc-search-max-results"), 10);
+	var fallback = panel.querySelector("[data-doc-search-fallback]");
+
+	if (!(maxResults >= MIN_MAX_RESULTS && maxResults <= MAX_MAX_RESULTS)) {
+		maxResults = DEFAULT_MAX_RESULTS;
+	}
 
 	if (query === null) {
 		query = new URLSearchParams(window.location.search).get("q") || "";
@@ -94,7 +108,15 @@
 		return url;
 	}
 
+	function dropFallback() {
+		if (fallback) {
+			fallback.remove();
+			fallback = null;
+		}
+	}
+
 	function render(results) {
+		dropFallback();
 		if (!results.length) {
 			showStatus(messages.noResults);
 			return;
@@ -122,13 +144,18 @@
 		panel.appendChild(list);
 	}
 
+	// Server-rendered results, if any, already cover these cases.
 	if (query.length < 2 || query.length > 100) {
-		showStatus(messages.length);
+		if (!fallback) {
+			showStatus(messages.length);
+		}
 		return;
 	}
 
 	if (!bundles.length) {
-		showStatus(messages.unavailable);
+		if (!fallback) {
+			showStatus(messages.unavailable);
+		}
 		return;
 	}
 
@@ -151,12 +178,12 @@
 				});
 		})
 		.then(function (search) {
-			return Promise.all(search.results.slice(0, MAX_RESULTS).map(function (result) {
+			return Promise.all(search.results.slice(0, maxResults).map(function (result) {
 				return result.data();
 			}));
 		})
 		.then(render)
 		.catch(function () {
-			showStatus(messages.unavailable);
+			showStatus(fallback ? "" : messages.unavailable);
 		});
 }());

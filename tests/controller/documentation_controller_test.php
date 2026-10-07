@@ -27,11 +27,15 @@ class documentation_controller_test extends TestCase
 {
 	protected $root;
 	protected $assigned;
+	protected $blocks;
+	protected $request_params;
 
 	protected function setUp(): void
 	{
 		$this->root = sys_get_temp_dir() . '/documentation_controller_' . uniqid();
 		$this->assigned = array();
+		$this->blocks = array();
+		$this->request_params = array();
 		foreach (array('en' => array('', 'quickstart', 'quickstart/install', 'englishonly'), 'da' => array('', 'quickstart', 'danishonly')) as $lang => $pages)
 		{
 			foreach ($pages as $page)
@@ -72,6 +76,10 @@ class documentation_controller_test extends TestCase
 		});
 		$request = $this->createMock(request_interface::class);
 		$request->method('variable')->willReturnCallback(function ($name, $default) use ($query, $scope) {
+			if (array_key_exists($name, $this->request_params))
+			{
+				return $this->request_params[$name];
+			}
 			return $name === 'q' ? $query : ($name === 'scope' ? $scope : $default);
 		});
 		$user = $this->createMock(user::class);
@@ -88,6 +96,9 @@ class documentation_controller_test extends TestCase
 		$template = $this->createMock(template::class);
 		$template->method('assign_vars')->willReturnCallback(function ($vars) {
 			$this->assigned = $vars;
+		});
+		$template->method('assign_block_vars')->willReturnCallback(function ($block, $vars) {
+			$this->blocks[$block][] = $vars;
 		});
 		$helper = $this->getMockBuilder(documentation_helper::class)
 			->setConstructorArgs(array($config, $this->createMock(language::class), $request, $user, '', $routes))
@@ -331,5 +342,81 @@ class documentation_controller_test extends TestCase
 			'unavailable' => 'DOCUMENTATION_SEARCH_UNAVAILABLE',
 			'loading' => 'DOCUMENTATION_SEARCH_LOADING',
 		), json_decode($this->assigned['DOCUMENTATION_SEARCH_MESSAGES'], true));
+	}
+
+	protected function make_search_index($lang, $section, array $titles)
+	{
+		$pages = array();
+		foreach ($titles as $path => $title)
+		{
+			$pages[] = array('url' => '/' . $lang . '/' . $section . '/' . ($path !== '' ? $path . '/' : ''), 'title' => $title, 'text' => 'database setup');
+		}
+		file_put_contents($this->root . '/' . $lang . '/' . $section . '/search-index.json', json_encode($pages));
+	}
+
+	public function test_search_without_javascript_uses_allowed_server_indexes()
+	{
+		$this->make_bundle('en', 'quickstart');
+		$this->make_search_index('en', 'quickstart', array('' => 'Quick Start', 'install' => 'Install'));
+		$this->make_search_index('en', 'englishonly', array('' => 'Restricted'));
+
+		$this->get_controller(array('u_phpbbmodders_documentation_englishonly'), 'database')->search('en');
+
+		$this->assertTrue($this->assigned['S_DOCUMENTATION_SEARCH_SERVER']);
+		$this->assertTrue($this->assigned['S_DOCUMENTATION_SEARCH_VALID']);
+		$this->assertSame(array('Install', 'Quick Start'), array_column($this->blocks['documentation_search_result'], 'TITLE'));
+		$this->assertSame('/app.php/documentation/en/quickstart/install', $this->blocks['documentation_search_result'][0]['U_PAGE']);
+	}
+
+	public function test_search_with_javascript_leaves_results_to_pagefind()
+	{
+		$this->make_bundle('en', 'quickstart');
+		$this->make_search_index('en', 'quickstart', array('' => 'Quick Start'));
+		$this->request_params = array('js' => 1);
+
+		$this->get_controller(array(), 'database')->search('en');
+
+		$this->assertFalse($this->assigned['S_DOCUMENTATION_SEARCH_SERVER']);
+		$this->assertArrayNotHasKey('documentation_search_result', $this->blocks);
+	}
+
+	public function test_search_with_javascript_but_no_bundles_still_uses_the_server()
+	{
+		$this->make_search_index('en', 'quickstart', array('' => 'Quick Start'));
+		$this->request_params = array('js' => 1);
+
+		$this->get_controller(array(), 'database')->search('en');
+
+		$this->assertTrue($this->assigned['S_DOCUMENTATION_SEARCH_SERVER']);
+		$this->assertSame(array(), json_decode($this->assigned['DOCUMENTATION_SEARCH_BUNDLES'], true));
+		$this->assertSame(array('Quick Start'), array_column($this->blocks['documentation_search_result'], 'TITLE'));
+	}
+
+	public function test_search_server_results_follow_the_configured_limit()
+	{
+		$titles = array();
+		for ($i = 0; $i < 15; $i++)
+		{
+			mkdir($this->root . '/en/quickstart/page' . $i);
+			file_put_contents($this->root . '/en/quickstart/page' . $i . '/index.html', 'page');
+			$titles['page' . $i] = 'Page ' . $i;
+		}
+		$this->make_search_index('en', 'quickstart', $titles);
+
+		$this->get_controller(array(), 'database', array('phpbbmodders_documentation_search_max_results' => 10))->search('en');
+
+		$this->assertSame(10, $this->assigned['DOCUMENTATION_SEARCH_MAX_RESULTS']);
+		$this->assertCount(10, $this->blocks['documentation_search_result']);
+	}
+
+	public function test_search_short_query_runs_no_server_search()
+	{
+		$this->make_search_index('en', 'quickstart', array('' => 'Quick Start'));
+
+		$this->get_controller(array(), 'd')->search('en');
+
+		$this->assertTrue($this->assigned['S_DOCUMENTATION_SEARCH_SERVER']);
+		$this->assertFalse($this->assigned['S_DOCUMENTATION_SEARCH_VALID']);
+		$this->assertArrayNotHasKey('documentation_search_result', $this->blocks);
 	}
 }

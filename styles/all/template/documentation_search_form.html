@@ -3,6 +3,8 @@
 	<div class="documentation-search-controls">
 		<input class="inputbox" id="documentation-search-query" type="search" name="q" value="{{ DOCUMENTATION_SEARCH_QUERY|e }}" minlength="2" maxlength="100" required>
 		<input type="hidden" name="scope" value="{{ DOCUMENTATION_SEARCH_SCOPE|e }}">
+		{# Set to 1 by documentation.js, so the server skips its own search when Pagefind will run. #}
+		<input type="hidden" name="js" value="">
 		<button class="button" type="submit" title="{{ lang('SEARCH') }}" aria-label="{{ lang('SEARCH') }}"><i class="icon fa-search fa-fw" aria-hidden="true"></i></button>
 	</div>
 </form>

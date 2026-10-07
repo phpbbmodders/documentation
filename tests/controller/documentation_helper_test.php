@@ -717,4 +717,77 @@ class documentation_helper_test extends TestCase
 
 		$this->assertSame('da', $helper->resolve_default_language());
 	}
+
+	protected function make_search_index($lang, $section, array $pages)
+	{
+		file_put_contents($this->docs_root . '/' . $lang . '/' . $section . '/search-index.json', json_encode($pages));
+	}
+
+	public function test_search_pages_requires_every_word_and_ranks_title_matches_first()
+	{
+		$this->make_search_index('en', 'quickstart', array(
+			array('url' => '/en/quickstart/', 'title' => 'Quick Start', 'text' => 'Install the board &amp; configure the database.'),
+			array('url' => '/en/quickstart/quick_installation/', 'title' => 'Database install', 'text' => 'Run the installer.'),
+			array('url' => '/en/quickstart/missing/', 'title' => 'Database install', 'text' => 'No page was built for this entry.'),
+			array('url' => '/da/quickstart/', 'title' => 'Database install', 'text' => 'Entry outside this section.'),
+			array('url' => '/en/quickstart/', 'title' => 'Board only', 'text' => 'board'),
+			'not an entry',
+		));
+
+		$results = $this->get_helper()->search_pages('en', 'DATABASE install', array('quickstart'), 50);
+
+		$this->assertSame(array('Database install', 'Quick Start'), array_column($results, 'title'));
+		$this->assertSame('/forum/app.php/documentation/en/quickstart/quick_installation?sid=test-session', $results[0]['url']);
+		$this->assertSame('Install the board & configure the database.', $results[1]['excerpt']);
+		$this->assertArrayNotHasKey('score', $results[0]);
+	}
+
+	public function test_search_pages_respects_the_limit_and_trims_long_excerpts()
+	{
+		$text = str_repeat('filler ', 40) . 'needle ' . str_repeat('tail ', 80);
+		$this->make_search_index('en', 'quickstart', array(
+			array('url' => '/en/quickstart/', 'title' => 'One', 'text' => $text),
+			array('url' => '/en/quickstart/quick_installation/', 'title' => 'Two', 'text' => $text),
+		));
+
+		$results = $this->get_helper()->search_pages('en', 'needle', array('quickstart'), 1);
+
+		$this->assertCount(1, $results);
+		$this->assertStringStartsWith('…', $results[0]['excerpt']);
+		$this->assertStringEndsWith('…', $results[0]['excerpt']);
+		$this->assertStringContainsString('needle', $results[0]['excerpt']);
+	}
+
+	public function test_search_index_file_is_contained_in_an_available_section()
+	{
+		$this->make_search_index('en', 'quickstart', array());
+		file_put_contents(dirname($this->docs_root) . '/escaped/search-index.json', '[]');
+		mkdir($this->docs_root . '/en/linked');
+		file_put_contents($this->docs_root . '/en/linked/index.html', 'page');
+		symlink(dirname($this->docs_root) . '/escaped/search-index.json', $this->docs_root . '/en/linked/search-index.json');
+		$helper = $this->get_helper();
+
+		$this->assertSame(realpath($this->docs_root . '/en/quickstart/search-index.json'), $helper->get_search_index_file('en', 'quickstart'));
+		$this->assertFalse($helper->get_search_index_file('en', 'linked'));
+		$this->assertFalse($helper->get_search_index_file('en', 'images'));
+		$this->assertFalse($helper->get_search_index_file('da', 'quickstart'));
+		$this->assertSame(array('quickstart'), $helper->get_search_index_sections('en', array('quickstart', 'linked')));
+		unlink(dirname($this->docs_root) . '/escaped/search-index.json');
+	}
+
+	/** @dataProvider search_max_results_provider */
+	public function test_search_max_results_is_clamped($config_data, $expected)
+	{
+		$this->assertSame($expected, $this->get_helper($config_data)->get_search_max_results());
+	}
+
+	public static function search_max_results_provider()
+	{
+		return array(
+			'missing' => array(array(), 50),
+			'configured' => array(array('phpbbmodders_documentation_search_max_results' => 120), 120),
+			'too low' => array(array('phpbbmodders_documentation_search_max_results' => 1), 10),
+			'too high' => array(array('phpbbmodders_documentation_search_max_results' => 5000), 200),
+		);
+	}
 }
