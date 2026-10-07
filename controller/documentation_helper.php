@@ -27,8 +27,8 @@ class documentation_helper
 	/** Character Hugo's breadcrumb puts before its home link. */
 	const HUGO_HOME_GLYPH = '⌂';
 
-	/** Font Awesome icon shown instead, matching the Documentation nav link's default icon. */
-	const BREADCRUMB_HOME_ICON = 'fa-file-text-o';
+	/** Font Awesome icon shown instead. */
+	const BREADCRUMB_HOME_ICON = 'fa-info-circle';
 
 	/**
 	 * The one top-level section name the developer docs build produces
