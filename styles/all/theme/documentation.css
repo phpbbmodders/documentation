@@ -5,6 +5,8 @@
 	flex-wrap: wrap;
 	gap: 10px;
 	margin-bottom: 10px;
+	/* Same size as the board's own breadcrumbs (prosilver's ul.linklist > li). */
+	font-size: 1.1em;
 }
 
 .documentation-language-picker a {
