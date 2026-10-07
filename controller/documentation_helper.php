@@ -43,6 +43,18 @@ class documentation_helper
 	/** Page whose wide tables get wrapped in a horizontally scrollable region. */
 	const EVENTS_LIST_PATH = 'development/extensions/events_list';
 
+	/** Default docs build path, relative to the phpBB root. */
+	const DEFAULT_DOCS_PATH = 'store/phpbbmodders_documentation';
+
+	/**
+	 * Default before the build moved to store/. Boards still set to it use
+	 * DEFAULT_DOCS_PATH when this has no build but that does.
+	 */
+	const LEGACY_DOCS_PATH = 'ext/phpbbmodders/documentation/docs-build';
+
+	/** This extension's own directory, relative to the phpBB root. */
+	const EXTENSION_PATH = 'ext/phpbbmodders/documentation';
+
 	/** Character Hugo's breadcrumb puts before its home link. */
 	const HUGO_HOME_GLYPH = '⌂';
 
@@ -167,22 +179,86 @@ class documentation_helper
 	}
 
 	/**
-	 * @return string|false The configured docs path, resolved and
-	 *         existence-checked, but without requiring it to be non-empty.
+	 * The configured docs path, resolved and existence-checked, but
+	 * without requiring it to be non-empty. A board still set to
+	 * LEGACY_DOCS_PATH with no build there gets DEFAULT_DOCS_PATH instead
+	 * when that has a build, so moving the build to store/ works before
+	 * the setting is updated.
+	 *
+	 * @return string|false
 	 */
 	protected function resolve_configured_root()
 	{
 		$configured = (string) $this->config['phpbbmodders_documentation_docs_path'];
+		$root = $this->resolve_path($configured);
 
-		if ($configured === '')
+		if ($this->is_store_fallback($configured, $root))
+		{
+			return $this->resolve_path(self::DEFAULT_DOCS_PATH);
+		}
+
+		return $root;
+	}
+
+	/**
+	 * @param string $configured The docs path setting.
+	 * @param string|false $root That setting, resolved.
+	 * @return bool Whether the build is read from DEFAULT_DOCS_PATH instead.
+	 */
+	protected function is_store_fallback($configured, $root)
+	{
+		if ($configured !== self::LEGACY_DOCS_PATH || ($root !== false && $this->has_any_language_directory($root)))
 		{
 			return false;
 		}
 
-		$root = (strpos($configured, '/') === 0) ? $configured : $this->phpbb_root_path . $configured;
-		$real = realpath($root);
+		$store = $this->resolve_path(self::DEFAULT_DOCS_PATH);
+
+		return $store !== false && $this->has_any_language_directory($store);
+	}
+
+	/**
+	 * @param string $path Absolute, or relative to the phpBB root.
+	 * @return string|false The existing directory's real path.
+	 */
+	protected function resolve_path($path)
+	{
+		if ($path === '')
+		{
+			return false;
+		}
+
+		$real = realpath((strpos($path, '/') === 0) ? $path : $this->phpbb_root_path . $path);
 
 		return ($real !== false && is_dir($real)) ? $real : false;
+	}
+
+	/**
+	 * Whether the docs build path setting is still the old default but the
+	 * build is read from DEFAULT_DOCS_PATH, so the setting should be updated.
+	 *
+	 * @return bool
+	 */
+	public function is_using_store_fallback()
+	{
+		$configured = (string) $this->config['phpbbmodders_documentation_docs_path'];
+
+		return $this->is_store_fallback($configured, $this->resolve_path($configured));
+	}
+
+	/**
+	 * Whether the build in use lives inside this extension's own
+	 * directory, which is replaced, build and all, when the extension is
+	 * updated.
+	 *
+	 * @return bool
+	 */
+	public function is_build_inside_extension()
+	{
+		$root = $this->get_docs_root();
+		$extension = $this->resolve_path(self::EXTENSION_PATH);
+
+		return $root !== false && $extension !== false && strpos($root . DIRECTORY_SEPARATOR, $extension . DIRECTORY_SEPARATOR) === 0;
 	}
 
 	/**

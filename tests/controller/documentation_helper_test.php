@@ -790,4 +790,80 @@ class documentation_helper_test extends TestCase
 			'too high' => array(array('phpbbmodders_documentation_search_max_results' => 5000), 200),
 		);
 	}
+
+	/**
+	 * A helper for a phpBB root at $board, with the docs build path set to $docs_path.
+	 *
+	 * @param string $board Absolute phpBB root, with a trailing slash.
+	 * @param string $docs_path
+	 * @return documentation_helper
+	 */
+	protected function get_board_helper($board, $docs_path)
+	{
+		return new documentation_helper(
+			$this->get_config(array('phpbbmodders_documentation_docs_path' => $docs_path)),
+			$this->createMock(language::class),
+			$this->get_request(),
+			$this->get_user(),
+			$board,
+			$this->get_controller_helper()
+		);
+	}
+
+	protected function make_board_build($board, $path)
+	{
+		mkdir($board . $path . '/en', 0777, true);
+		file_put_contents($board . $path . '/en/index.html', 'page');
+	}
+
+	public function test_old_default_path_without_a_build_falls_back_to_store()
+	{
+		$board = $this->docs_root . '/board/';
+		mkdir($board . documentation_helper::LEGACY_DOCS_PATH, 0777, true);
+		$this->make_board_build($board, documentation_helper::DEFAULT_DOCS_PATH);
+
+		$helper = $this->get_board_helper($board, documentation_helper::LEGACY_DOCS_PATH);
+
+		$this->assertSame(realpath($board . documentation_helper::DEFAULT_DOCS_PATH), $helper->get_docs_root());
+		$this->assertSame(array('en'), $helper->get_available_languages());
+		$this->assertTrue($helper->is_using_store_fallback());
+		$this->assertFalse($helper->is_build_inside_extension());
+	}
+
+	public function test_old_default_path_with_a_build_keeps_it_and_warns()
+	{
+		$board = $this->docs_root . '/board/';
+		$this->make_board_build($board, documentation_helper::LEGACY_DOCS_PATH);
+		$this->make_board_build($board, documentation_helper::DEFAULT_DOCS_PATH);
+
+		$helper = $this->get_board_helper($board, documentation_helper::LEGACY_DOCS_PATH);
+
+		$this->assertSame(realpath($board . documentation_helper::LEGACY_DOCS_PATH), $helper->get_docs_root());
+		$this->assertFalse($helper->is_using_store_fallback());
+		$this->assertTrue($helper->is_build_inside_extension());
+	}
+
+	public function test_other_missing_paths_do_not_fall_back_to_store()
+	{
+		$board = $this->docs_root . '/board/';
+		$this->make_board_build($board, documentation_helper::DEFAULT_DOCS_PATH);
+
+		$helper = $this->get_board_helper($board, 'store/somewhere_else');
+
+		$this->assertFalse($helper->get_docs_root());
+		$this->assertFalse($helper->is_using_store_fallback());
+	}
+
+	public function test_store_path_is_neither_a_fallback_nor_inside_the_extension()
+	{
+		$board = $this->docs_root . '/board/';
+		mkdir($board . documentation_helper::EXTENSION_PATH, 0777, true);
+		$this->make_board_build($board, documentation_helper::DEFAULT_DOCS_PATH);
+
+		$helper = $this->get_board_helper($board, documentation_helper::DEFAULT_DOCS_PATH);
+
+		$this->assertSame(realpath($board . documentation_helper::DEFAULT_DOCS_PATH), $helper->get_docs_root());
+		$this->assertFalse($helper->is_using_store_fallback());
+		$this->assertFalse($helper->is_build_inside_extension());
+	}
 }
