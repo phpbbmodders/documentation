@@ -15,6 +15,18 @@
 </div>
 {% endif %}
 
+{% if S_DOCUMENTATION_STORE_FALLBACK %}
+<div class="errorbox">
+	<p>{{ lang('ACP_DOCUMENTATION_STORE_FALLBACK', DOCUMENTATION_DEFAULT_DOCS_PATH)|e }}</p>
+</div>
+{% endif %}
+
+{% if S_DOCUMENTATION_BUILD_IN_EXTENSION %}
+<div class="errorbox">
+	<p>{{ lang('ACP_DOCUMENTATION_BUILD_IN_EXTENSION', DOCUMENTATION_DEFAULT_DOCS_PATH)|e }}</p>
+</div>
+{% endif %}
+
 {% if not S_DOCUMENTATION_BUILD_FOUND %}
 <div class="errorbox">
 	<p>{{ lang('ACP_DOCUMENTATION_BUILD_MISSING') }}</p>

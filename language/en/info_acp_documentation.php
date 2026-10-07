@@ -23,6 +23,9 @@ $lang = array_merge($lang, array(
 	'ACP_DOCUMENTATION_SETTINGS' => 'Documentation settings',
 	'ACP_DOCUMENTATION_SETTINGS_EXPLAIN' => 'Configure where the built documentation site lives and how it behaves inside the forum.',
 
+	'ACP_DOCUMENTATION_STORE_FALLBACK'    => 'The docs build path still points to the old location inside the extension, which has no build, so the documentation is being read from %s instead. Set the docs build path below to that directory.',
+	'ACP_DOCUMENTATION_BUILD_IN_EXTENSION' => 'The documentation build is inside the extension’s own directory, which is deleted when the extension is updated. Move the build to %s and set the docs build path below to that directory.',
+
 	'ACP_DOCUMENTATION_BUILD_MISSING' => 'No documentation build was found at the configured path. Documentation will stay hidden from the forum until this is fixed.',
 
 	'ACP_DOCUMENTATION_DOCS_PATH'         => 'Docs build path',

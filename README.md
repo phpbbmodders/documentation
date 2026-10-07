@@ -29,7 +29,7 @@ Shows the board's Hugo documentation site inside phpBB, styled with the active b
 
 The build's HTML is shown inside the board as-is, so only put a build you trust at the docs build path, in a directory only administrators can write to.
 
-Boards upgraded from an earlier version keep their build at `ext/phpbbmodders/documentation/docs-build/` if one was already there; move it to the new location and update the docs build path to stop the next extension update deleting it.
+Boards upgraded from an earlier version keep their build at `ext/phpbbmodders/documentation/docs-build/` if one was already there; move it to the new location and update the docs build path to stop the next extension update deleting it. The settings page warns while the build is inside the extension's directory. If the build is moved but the setting isn't updated, the extension reads it from `store/phpbbmodders_documentation/` and the settings page asks for the setting to be updated.
 
 If you add a new top-level section or a new language to the docs build later, use the **Resync permissions** button on the settings page.
 
