@@ -26,7 +26,7 @@ Click a screenshot for the full size. More screenshots, including the phone layo
 ## Requirements
 
 - phpBB 3.3.19 or a later 3.3 release
-- PHP 8.0 or later
+- PHP 8.1 or later
 
 ## Installation
 
